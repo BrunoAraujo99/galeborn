@@ -178,6 +178,7 @@ const Duel = {
         break;
       }
       case 'pun': Tempo.punish(Opp.chest()); break;
+      case 'brk': Clarity.onBroke(); break;
       case 'miss':
         // our strike was blocked: the string is broken, and a blocked big hit leaves us wide open
         if (m.why === 'blocked' && p.state === 'attack' && p.move) {
@@ -196,7 +197,7 @@ const Duel = {
         break;
       }
       case 'gb': FX.popup(Opp.chest().add(new V3(0, 1.1, 0)), 'GUARD BREAK', 'break', Render.camera); Sfx.P('sfx_posture_break', 0.9) || Sfx.boom(0.6); FX.shake(0.3); break;
-      case 'fx': { const f = FX[m.f]; if (f) { this.mirror = false; f.apply(FX, m.a.map(deserArg)); } break; }
+      case 'fx': { const f = FX[m.f]; if (f && !(Clarity.busy() && (m.f === 'impactLines' || m.f === 'burst') && Math.random() < 0.6)) { this.mirror = false; f.apply(FX, m.a.map(deserArg)); } break; }
       case 'pr': G.proj.push(new Projectile({ pos: new V3(...m.pos), vel: new V3(...m.vel), r: m.r, owner: 'ghost', dmg: 0, life: m.life, kind: m.kind })); break;
       case 'cut': CutIn.play(Opp.rig, 'boss', m.name, m.sub, 1.1); FX.speedBg(1.1, true); break;
       case 'ult': this.ultVisual(Opp.def.pal, new V3(m.at[0], 0, m.at[1])); break;
@@ -276,12 +277,13 @@ const Duel = {
     else { slowmo(0.3, 1); Render.post.flash = 0.3; }
     if (!forfeit && this.wins[0] < 2 && this.wins[1] < 2) {
       HUD.banner(why || (won ? 'ROUND ' + this.round : 'ROUND LOST'), won ? 'fight' : 'flow');
-      if (won) Sfx.stinger && Sfx.stinger('stinger_round'); 
+      if (won) { Sfx.stinger && Sfx.stinger('stinger_round'); Clips.mark('ROUND ' + this.round + ' K.O.', 4); }
       const r = this.round;
       setTimeout(() => { if (this.active && this.ended && !this.matchDone && this.round === r) this.nextRound(); }, 2900);
       return;
     }
     this.matchDone = true;
+    if (won && !forfeit) Clips.mark('MATCH K.O.', 6, 3.2);
     if (won) { const f = Progress.finOf(Hero.id); if (f) { setTimeout(() => FinisherFX.play(f, Opp.chest()), 250); this.send({ t: 'fin', f }); } }
     this.xpRes = Progress.grant(this.match.kind === 'bot' ? 'bot' : 'online', won, { diff: Lobby.lastDiff });
     Sfx.intensity = 0; if (won) setTimeout(() => Sfx.victory(), 700); else Sfx.defeat();
@@ -313,6 +315,7 @@ const Duel = {
     $('endPanel').className = 'panel show ' + (won ? 'win' : 'lose');
     G.state = won ? 'victory' : 'defeat';
     Input.unlock();
+    Clips.showEnd();
   },
   renderResult() {
     const r = this.result, m = this.match;
@@ -359,7 +362,7 @@ const Duel = {
     this.rmMe = this.rmOpp = false; this.matchDone = false; this.round = 0; this.wins = [0, 0];
     $('endPanel').className = 'panel'; $('hud').classList.add('show');
     G.stats = { time: 0, maxCombo: 0, perfect: 0, deflects: 0, breaks: 0, dmgTaken: 0, counters: 0, specials: 0 };
-    this.ended = true; this.nextRound();
+    Clips.reset(); this.ended = true; this.nextRound();
     Input.lock();
   },
   // leave the duel and restore solo mode

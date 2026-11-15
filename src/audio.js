@@ -12,7 +12,7 @@ const Sfx = {
     const ctx = (this.ctx = new AC());
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -14; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.2;
-    comp.connect(ctx.destination);
+    comp.connect(ctx.destination); this.comp = comp;
     this.master = ctx.createGain(); this.master.gain.value = this.masterVol ?? 0.7; this.master.connect(comp);
     this.sfxBus = ctx.createGain(); this.sfxBus.gain.value = 1; this.sfxBus.connect(this.master);
     this.music = ctx.createGain(); this.music.gain.value = this.musicVol ?? 0.55; this.music.connect(this.master);

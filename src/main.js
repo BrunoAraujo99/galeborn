@@ -22,7 +22,7 @@ const Cam = {
     this.side = damp(this.side, this.sideT ?? 1, 1.5, dt);
     this.pitch = clamp(this.pitch + a.cy, -0.12, 1.05);
     const sep = lockOK ? dPB : 0;
-    const dist = clamp(5.4 + sep * 0.32, 5.4, 14);
+    const dist = clamp(5.4 + sep * 0.32, 5.4, 14) + Clarity.zoom * 2.6;
     const right = new V3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     const lat = (lockOK ? 1.25 : 0.6) * this.side;
     const focus = new V3(p.pos.x, p.pos.y * 0.75 + 1.45, p.pos.z).addScaledVector(right, lat);
@@ -32,7 +32,7 @@ const Cam = {
       outLook.lerp(bc, clamp(0.35 + sep * 0.012, 0.35, 0.55));
       if (b.pos.y > 1) outLook.y = lerp(outLook.y, bc.y, 0.3);
     }
-    const pitch = this.pitch;
+    const pitch = this.pitch + Clarity.zoom * 0.12;
     outPos.set(focus.x + Math.sin(this.yaw) * Math.cos(pitch) * dist, focus.y + Math.sin(pitch) * dist + 0.3, focus.z + Math.cos(this.yaw) * Math.cos(pitch) * dist);
     if (outPos.y < 0.45) outPos.y = 0.45;
     // keep the camera inside the arena and out of standing pillars
@@ -159,6 +159,7 @@ G.onVictory = function () {
   Sfx.boom(1.5); Sfx.intensity = 0;
   HUD.banner('', '');
   G.endT = 0; G.won = true;
+  Clips.mark('VARUKH FALLS', 6, 4);
   const b = G.boss, p = G.player;
   FX.shockwave(b.chest(new V3()), 1, 2.5, 0.9); FX.impactLines(b.chest(new V3()), 30, 0xffffff, 8, 0.4);
   Cam.cine = (dt, cam) => {
@@ -202,6 +203,7 @@ function showEnd(win) {
   $('endTitle').textContent = win ? 'VICTORY' : 'DEFEATED';
   $('endSub').textContent = win ? 'The Cinder Warden falls. The winds are yours.' : 'The embers swallow the sky… rise again.';
   $('endPanel').className = 'panel show ' + (win ? 'win' : 'lose');
+  Clips.showEnd();
   const xr = Progress.grant('solo', win);
   const m = Math.floor(s.time / 60), sec = Math.floor(s.time % 60);
   $('endStats').innerHTML = `
@@ -218,6 +220,7 @@ G.reset = function () {
   for (const h of G.hazards) if (!h.done) h.dispose();
   G.proj.length = 0; G.hazards.length = 0;
   FX.clear();
+  Clips.reset();
   G.player.reset(); G.boss.cancelAttack(); G.boss.reset();
   G.timeScale = G.tsTarget = 1; G.slowT = 0; G.bossScale = G.bossScaleTarget = 1; G.hitstop = 0; G.flowT = 0;
   G.stats = { time: 0, maxCombo: 0, perfect: 0, deflects: 0, breaks: 0, dmgTaken: 0, counters: 0, specials: 0 };
@@ -294,7 +297,7 @@ function main() {
   Input.init(Render.r.domElement);
   HUD.init();
   CutIn.init();
-  Menu.init(); Settings.apply(); Select.build(); if (!IS_BOT) { Lobby.init(); Profile.init(); } SpeedLines.init();
+  Menu.init(); Settings.apply(); Select.build(); if (!IS_BOT) { Lobby.init(); Profile.init(); Clips.init(); } SpeedLines.init();
   try { const h = localStorage.getItem('galeborn.hero'); if (HEROES[h]) Hero.apply(h); } catch (e) {}
   G.setHero(Hero.id);
   G.boss = new Boss();
@@ -323,7 +326,7 @@ function main() {
     if (!IS_BOT) requestAnimationFrame(frame);
     const elapsed = IS_BOT ? botRaw : (now - last) / 1000;
     const raw = Math.min(elapsed, 1 / 20); last = now;
-    Quality.tick(Math.min(elapsed, 1)); Perf.tick(Math.min(elapsed, 1));
+    Quality.tick(Math.min(elapsed, 1)); Perf.tick(Math.min(elapsed, 1)); Clips.update();
     G.time += raw;
     const a = IS_BOT ? BotAI.input(raw) : Input.poll();
     if (a.mute) Sfx.setMuted(!Sfx.muted);
@@ -386,7 +389,7 @@ function main() {
       else { Duel.mirror = Duel.active; G.player.update(pdt, a); Duel.mirror = false; G.boss.update(Duel.active ? sim : bdt); }
       Duel.tick(raw);
       for (const p of G.proj) { p.update(p.owner === 'boss' ? bdt : pdt, Render.camera); if (!p.dead && p.owner === 'boss') Graze.check(p, G.player); }
-      ProjClash.update(); Arena.update(pdt); Tempo.update(pdt); Training.update(pdt);
+      ProjClash.update(); Arena.update(pdt); Tempo.update(pdt); Clarity.update(pdt); Training.update(pdt);
       for (let i = G.proj.length - 1; i >= 0; i--) if (G.proj[i].dead) G.proj.splice(i, 1);
       // wind cancels fire: player projectiles destroy fireballs
       for (const p of G.proj) if (p.owner === 'player' && !p.dead && p.kind !== 'fireball') for (const q of G.proj) if (q.owner === 'boss' && !q.dead && p.pos.distanceTo(q.pos) < p.r + q.r) { q.explode(); Sfx.deflect(); G.player.gainFlow(4); }
@@ -417,7 +420,7 @@ function main() {
     P.tintAmt = damp(P.tintAmt, G.flowT > 0 || G.player.state === 'special' ? 0.55 : 0, 6, raw);
     P.lowHp = damp(P.lowHp, G.player.hp < 30 && G.player.alive ? 0.6 + Math.sin(G.time * 6) * 0.25 : 0, 4, raw);
     if (G.state !== 'title') HUD.update(raw);
-    if (!IS_BOT) Render.render(G.time);
+    if (!IS_BOT) { Render.render(G.time); Clips.grab(); }
     Input.endFrame();
   }
   if (IS_BOT) { Quality.set && Quality.set('low'); Quality.tick = () => {}; BotAI.init(frame); }

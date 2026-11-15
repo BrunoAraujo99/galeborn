@@ -204,6 +204,12 @@ body.awake .portrait, body.awake #flowRingFg { filter: drop-shadow(0 0 8px #5ff0
 #endStats div { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.15); padding: 4px 0; }
 #endStats span { opacity: 0.75; } #endStats b { color: var(--wind); }
 #endStats div.xpLine { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; grid-column: 1 / -1; border: none; } #endStats .xpLine span { opacity: 1; } #endStats .xpLine i, #endStats .xpLine small { flex-basis: 100%; }
+#clipBox { display: none; flex-direction: column; align-items: center; gap: 6px; margin: -10px 0 18px; width: min(420px, 100%); }
+#clipBox.show { display: flex; }
+#clipBox video { height: min(26vh, 236px); max-width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border: 3px solid var(--ink); border-radius: 6px; background: #000; box-shadow: 0 0 18px rgba(120,220,255,.25); }
+#clipBox .clipBar { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+#clipBox .clipBar b { font-style: italic; letter-spacing: 1px; color: #ffe080; font-size: 14px; }
+#clipBox .btn.small { padding: 6px 12px; font-size: 13px; }
 #endStats .rank { grid-column: 1 / -1; justify-content: center; gap: 20px; align-items: center; border: none; }
 #endStats .rank b { font-size: 64px; font-style: italic; color: #ffe080; text-shadow: 4px 4px 0 var(--ink), 0 0 20px #ffb020; }
 #pause { background: rgba(8,6,14,0.82); z-index: 40; }
@@ -406,7 +412,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
 <div class="panel" id="pause"><h1>PAUSED</h1><h2 class="settingsTitle">SETTINGS</h2><div id="settings"></div><p class="hintline"><span class="ic" data-act="pause"></span> back</p></div>
 <div id="fps">60 FPS</div>
 <div id="moment"></div>
-<div class="panel" id="endPanel"><h1 id="endTitle">VICTORY</h1><p id="endSub"></p><div id="endStats"></div><button class="btn" id="retryBtn">FIGHT AGAIN</button> <button class="btn small" id="heroBtn">CHANGE HERO</button><p class="rhint" style="font-size:13px;opacity:.75"><span class="ic" data-act="restart"></span> to restart</p></div>
+<div class="panel" id="endPanel"><h1 id="endTitle">VICTORY</h1><p id="endSub"></p><div id="endStats"></div><div id="clipBox"><video id="clipVid" muted loop playsinline></video><div class="clipBar"><b id="clipName"></b><span><button class="btn small" id="clipSave">SAVE CLIP</button> <button class="btn small" id="clipShare">SHARE</button> <button class="btn small" id="clipNext">NEXT</button></span></div></div><button class="btn" id="retryBtn">FIGHT AGAIN</button> <button class="btn small" id="heroBtn">CHANGE HERO</button><p class="rhint" style="font-size:13px;opacity:.75"><span class="ic" data-act="restart"></span> to restart</p></div>
 <div id="help">
   <div><b>Move</b><span class="ic" data-act="move"></span></div><div><b>Jump ×2</b><span class="ic" data-act="jump"></span></div>
   <div><b>Dash</b><span class="ic" data-act="dash"></span></div><div><b>Strike</b><span class="ic" data-act="light"></span></div>
@@ -5403,7 +5409,7 @@ const Sfx = {
     const ctx = (this.ctx = new AC());
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -14; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.2;
-    comp.connect(ctx.destination);
+    comp.connect(ctx.destination); this.comp = comp;
     this.master = ctx.createGain(); this.master.gain.value = this.masterVol ?? 0.7; this.master.connect(comp);
     this.sfxBus = ctx.createGain(); this.sfxBus.gain.value = 1; this.sfxBus.connect(this.master);
     this.music = ctx.createGain(); this.music.gain.value = this.musicVol ?? 0.55; this.music.connect(this.master);
@@ -8360,16 +8366,17 @@ class Player {
     Pursuit.arm(this, tag);
     Kit.onHit(this, res, point, dir, big, tag);
     if (res.interrupt) Moment.fire('INTERRUPT', 'HIS ATTACK SHATTERED', point, dir, 2);
+    Clarity.hit(big);
     hitstop(stop);
-    FX.shake(big ? 0.55 : 0.24);
+    FX.shake(big ? 0.55 : Clarity.fx(0.24));
     Sfx.hit(big ? 1.5 : 1);
     FX.hitSpark(point, dir, big, false);
-    FX.impactLines(point, big ? 18 : 9, HC.glow, big ? 4.5 : 2.4, big ? 0.24 : 0.16);
+    if (big || !Clarity.busy()) FX.impactLines(point, big ? 18 : 9, HC.glow, big ? 4.5 : 2.4, big ? 0.24 : 0.16);
     if (big) {
       Render.post.impact = Math.max(Render.post.impact, 1); Render.post.aberr = 1.2; Render.post.speed = Math.max(Render.post.speed, 1);
       FX.fovKick -= 6; FX.shockwave(point, 0.45, 1.2); FX.sfxWord(point, false);
       Cam.dutch((Math.random() < 0.5 ? -1 : 1) * 0.07);
-    } else FX.fovKick -= 1.2;
+    } else FX.fovKick -= Clarity.fx(1.2);
     const label = this.hitLabel || { counter: 'COUNTER', finisher: 'FINISHER', splat: 'WALL SPLAT', slam: 'CRASH', reflect: 'RETURN', rush: 'GALE RUSH', pursuit: 'PURSUIT', skyfall: 'SKYFALL', topple: 'TOPPLE', launcher: 'LAUNCH' }[tag] || '';
     FX.dmgNumber(point, res.dmg, tag === 'counter' || tag === 'splat' ? 'gold' : this.hitKind || (big ? 'big' : ''), label);
     if (tag === 'counter' || tag === 'finisher' || tag === 'splat') {
@@ -8589,6 +8596,7 @@ class Player {
     if (this.invuln > 0) return 'immune';
     const gr = kind === 'burst' ? '' : Guard.check(this, dmg, dir, kind, src);
     if (gr) return gr;
+    if (src === 'pvp' && kind !== 'chip' && kind !== 'burst' && Clarity.on() && Clarity.chain(this)) { Clarity.breakAway(this, dir); return 'dodged'; }
     if (kind === 'burst') kind = 'heavy';
     if (this.state === 'guardbreak') dmg = Math.round(dmg * 1.25);
     if (this.recovering() && kind !== 'chip') {
@@ -8606,8 +8614,9 @@ class Player {
     G.stats.dmgTaken += dmg;
     this.combo = 0; this.counterT = 0;
     for (const k in this.trails) this.trails[k].emit = false;
-    Sfx.playerHurt(); FX.shake(kind === 'light' ? 0.35 : 0.6); hitstop(kind === 'light' ? 0.06 : 0.1);
-    Render.post.aberr = 1.2;
+    Clarity.hit(kind !== 'light');
+    Sfx.playerHurt(); FX.shake(kind === 'light' ? Clarity.fx(0.35) : 0.6); hitstop(kind === 'light' ? 0.06 : 0.1);
+    Render.post.aberr = kind === 'light' ? Clarity.fx(1.2) : 1.2;
     FX.dmgNumber(this.chest(), dmg, 'hurt'); if (kind !== 'light') { FX.sfxWord(this.chest(), true); Cam.dutch(0.06); }
     this.yaw = yawOf(-dir.x, -dir.z);
     if (this.hp <= 0) {
@@ -8635,7 +8644,7 @@ class Player {
     } else {
       // in a duel a light hit only nudges, so a well-timed string can actually combo
       const kb = src === 'pvp' ? 2.2 : 7;
-      this.state = 'hit'; this.st = 0; this.stunDur = src === 'pvp' ? 0.38 : 0.3;
+      this.state = 'hit'; this.st = 0; this.stunDur = src === 'pvp' ? Clarity.stun(this, 0.38) : 0.3;
       this.vel.set(dir.x * kb, Math.max(this.vel.y, 0), dir.z * kb);
     }
     return 'hit';
@@ -9986,6 +9995,7 @@ const Moment = {
     if (now - (this.last[name] || -99) < (level > 1 ? 0.8 : 1.5) || now < this.gap) return false;
     this.last[name] = now; this.gap = now + 0.5;
     if (G.stats) G.stats.moments = (G.stats.moments || 0) + 1;
+    Clips.mark(name, level > 1 ? 3 : 1);
     const el = $('moment');
     el.innerHTML = `<div class="mn">${name}</div>${sub ? `<div class="ms">${sub}</div>` : ''}`;
     el.className = ''; void el.offsetWidth; el.className = 'show lv' + level;
@@ -10105,6 +10115,146 @@ const Graze = {
   },
 };
 const _gv = new V3();
+
+/* ---------------- Highlight clips: rolling capture of the canvas, keeps the best moments of a fight ----------------
+   One MediaRecorder runs in short segments that are thrown away unless a highlight lands in them. When Moment.fire
+   or a K.O. marks a highlight, the current segment keeps recording ~2.5 s more, then is kept as a clip with a score.
+   The end screen shows the best clip with SAVE and SHARE. */
+const Clips = {
+  ok: false, rec: null, stream: null, chunks: [], segT0: 0, pend: null, kept: [], shown: 0, mime: '', waiters: [],
+  SEG: 8, TAIL: 2.5, MAXSEG: 18,
+  enabled() { return this.ok && Settings.v.clips !== false && !Training.active; },
+  init() {
+    if (typeof IS_BOT !== 'undefined' && IS_BOT) return;
+    const c = Render.r.domElement;
+    if (!window.MediaRecorder || !c.captureStream) return;
+    this.mime = ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus', 'video/webm', 'video/mp4'].find(m => MediaRecorder.isTypeSupported(m)) || '';
+    if (!this.mime) return;
+    this.ok = true;
+    $('clipSave').addEventListener('click', () => this.save());
+    $('clipShare').addEventListener('click', () => this.share());
+    $('clipNext').addEventListener('click', () => { if (this.kept.length > 1) { this.shown = (this.shown + 1) % this.kept.length; this.paint(); } });
+  },
+  // the clip is drawn from the game canvas into a small 2D canvas right after each render (cheap to encode)
+  grab() {
+    if (!this.rec || !this.cv) return;
+    const now = performance.now(); if (now - (this.lastGrab || 0) < 30) return; this.lastGrab = now;
+    const src = Render.r.domElement, W = this.cv.width, H = this.cv.height;
+    const sa = src.width / src.height, da = W / H;
+    let sw = src.width, sh = src.height, sx = 0, sy = 0;
+    if (sa > da) { sw = sh * da; sx = (src.width - sw) / 2; } else { sh = sw / da; sy = (src.height - sh) / 2; }
+    try { this.cx.drawImage(src, sx, sy, sw, sh, 0, 0, W, H); } catch (e) {}
+    this.cx.font = 'italic 900 15px sans-serif'; this.cx.fillStyle = 'rgba(255,255,255,.55)'; this.cx.fillText('GALEBORN', 14, H - 14);
+  },
+  ensureStream() {
+    if (this.stream) return this.stream;
+    const hi = (Settings.v.quality === 'ultra' || Settings.v.quality === 'high');
+    this.cv = document.createElement('canvas'); this.cv.width = hi ? 1280 : 960; this.cv.height = hi ? 720 : 540;
+    this.cx = this.cv.getContext('2d');
+    this.stream = this.cv.captureStream(30);
+    try {
+      if (Sfx.ctx && Sfx.comp) {
+        const dest = Sfx.ctx.createMediaStreamDestination();
+        Sfx.comp.connect(dest);
+        for (const t of dest.stream.getAudioTracks()) this.stream.addTrack(t);
+      }
+    } catch (e) {}
+    return this.stream;
+  },
+  startSeg() {
+    let rec;
+    try { rec = new MediaRecorder(this.ensureStream(), { mimeType: this.mime, videoBitsPerSecond: 5e6 }); } catch (e) { this.ok = false; return; }
+    const chunks = [];
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = () => {
+      const p = rec._keep;
+      if (p && chunks.length) this.keep(new Blob(chunks, { type: this.mime.split(';')[0] }), p);
+      if (rec._done) rec._done();
+    };
+    rec.start(500);
+    this.rec = rec; this.segT0 = performance.now();
+  },
+  stopSeg(keep) {
+    const rec = this.rec; if (!rec) return Promise.resolve();
+    this.rec = null; rec._keep = keep || null;
+    return new Promise(res => { rec._done = res; try { rec.stop(); } catch (e) { res(); } });
+  },
+  keep(blob, p) {
+    this.kept.push({ blob, url: URL.createObjectURL(blob), name: p.name, score: p.score, dur: p.dur });
+    this.kept.sort((a, b) => b.score - a.score);
+    while (this.kept.length > 3) URL.revokeObjectURL(this.kept.pop().url);
+  },
+  // called by Moment.fire, round K.O.s and finishers
+  mark(name, score, tail = this.TAIL) {
+    if (!this.rec) return;
+    const now = performance.now();
+    if (!this.pend) this.pend = { name, score, at: now };
+    else if (score >= this.pend.score) { this.pend.name = name; this.pend.score = score + this.pend.score * 0.3; }
+    else this.pend.score += score * 0.3;
+    this.pend.stopAt = Math.max(this.pend.stopAt || 0, now + tail * 1000);
+  },
+  active() { return this.enabled() && (G.state === 'fight' || G.state === 'ending' || G.state === 'intro') && !G.menuOpen; },
+  update() {
+    if (!this.ok) return;
+    const now = performance.now();
+    if (!this.active()) {
+      if (this.rec && !this.pend) this.stopSeg(null);
+      else if (this.rec && this.pend && now >= this.pend.stopAt) this.flush();
+      return;
+    }
+    if (!this.rec) { this.startSeg(); return; }
+    const age = (now - this.segT0) / 1000;
+    if (this.pend) { if (now >= this.pend.stopAt || age > this.MAXSEG) this.flush(); }
+    else if (age > this.SEG) { this.stopSeg(null); this.startSeg(); }
+  },
+  flush() {
+    const p = this.pend; this.pend = null;
+    p.dur = (performance.now() - this.segT0) / 1000;
+    const done = this.stopSeg(p);
+    if (this.active()) this.startSeg();
+    return done;
+  },
+  // new fight: forget the last fight's clips
+  reset() {
+    this.pend = null; if (this.rec) this.stopSeg(null);
+    for (const k of this.kept) URL.revokeObjectURL(k.url);
+    this.kept = []; this.shown = 0; $('clipBox').classList.remove('show');
+  },
+  async showEnd() {
+    if (!this.ok) return;
+    if (this.pend) await this.flush();
+    else if (this.rec) await this.stopSeg(null);
+    await new Promise(r => setTimeout(r, 60));
+    this.shown = 0; this.paint();
+  },
+  paint() {
+    const box = $('clipBox'), k = this.kept[this.shown];
+    if (!k) { box.classList.remove('show'); return; }
+    box.classList.add('show');
+    const v = $('clipVid'); if (v.src !== k.url) { v.src = k.url; v.play().catch(() => {}); }
+    $('clipName').textContent = k.name + (this.kept.length > 1 ? `  ·  ${this.shown + 1}/${this.kept.length}` : '');
+    $('clipNext').style.display = this.kept.length > 1 ? '' : 'none';
+    $('clipShare').style.display = navigator.canShare ? '' : 'none';
+  },
+  fileOf(k) {
+    const ext = k.blob.type.includes('mp4') ? 'mp4' : 'webm';
+    const nm = k.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'highlight';
+    return new File([k.blob], `galeborn-${nm}-${new Date().toISOString().slice(0, 10)}.${ext}`, { type: k.blob.type });
+  },
+  save() {
+    const k = this.kept[this.shown]; if (!k) return; Sfx.ui();
+    const f = this.fileOf(k), a = document.createElement('a');
+    a.href = k.url; a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+  },
+  async share() {
+    const k = this.kept[this.shown]; if (!k) return; Sfx.ui();
+    const f = this.fileOf(k);
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: 'Galeborn · ' + k.name, text: 'Galeborn highlight: ' + k.name });
+      else this.save();
+    } catch (e) { if (e.name !== 'AbortError') this.save(); }
+  },
+};
 
 'use strict';
 /* ============================================================
@@ -10837,6 +10987,52 @@ const Tempo = {
   },
 };
 
+/* ---------------- Clarity: keeps fast PvP exchanges readable ----------------
+   heat = how dense the current exchange is (hits per second, decaying). When it runs hot in a duel:
+   - small-hit effects (shake, impact lines, aberration, FOV kicks) are toned down so silhouettes stay visible
+   - the camera pulls back and up to frame both fighters
+   - hitstun on the receiving side decays through a long string, and after a long lock the victim BREAKS AWAY
+     (short invulnerable hop back), so spam can't hold someone forever and every exchange has a clear end */
+const Clarity = {
+  heat: 0, zoom: 0,
+  BREAK_HITS: 9, BREAK_TIME: 3.0,
+  on() { return G.mode === 'duel' && Duel.active; },
+  hit(big) { if (this.on()) this.heat = Math.min(this.heat + (big ? 1.4 : 1), 8); },
+  busy() { return this.on() && this.heat > 2.2; },
+  fx(x) { return this.busy() ? x * 0.4 : x; },
+  update(dt) {
+    this.heat = Math.max(0, this.heat - dt * 1.5);
+    const t = this.on() ? clamp((this.heat - 1.2) / 3.5, 0, 1) : 0;
+    this.zoom = damp(this.zoom, t, t > this.zoom ? 3 : 0.8, dt);
+  },
+  // defender side: track the string we're stuck in. Returns true when we should break away instead of taking the hit.
+  chain(p) {
+    const now = G.time;
+    if (now - (p.chainT ?? -9) > 0.75) { p.chainN = 0; p.chainT0 = now; }
+    p.chainN++; p.chainT = now;
+    return p.chainN > this.BREAK_HITS || (p.chainN > 5 && now - p.chainT0 > this.BREAK_TIME);
+  },
+  stun(p, base) { return base * Math.max(0.55, 1 - 0.07 * Math.max(0, (p.chainN || 0) - 3)); },
+  breakAway(p, dir) {
+    p.chainN = 0; p.chainT = -9;
+    p.toMove(); p.invuln = 0.55; p.grounded = true;
+    p.vel.set(dir.x * 12, 3.5, dir.z * 12);
+    const c = p.chest();
+    FX.shockwave(c, 0.5, 1.6); FX.impactLines(c, 12, 0xffffff, 3, 0.2);
+    FX.popup(c.clone().add(new V3(0, 1.2, 0)), 'BREAK AWAY', 'tag', Render.camera);
+    Sfx.P('sfx_dodge', 0.8) || Sfx.whoosh(1.4, 0.3);
+    this.heat = 0;
+    if (Duel.active) Duel.send({ t: 'brk' });
+  },
+  // attacker side: the opponent slipped out of our string
+  onBroke() {
+    const p = G.player;
+    if (p.state === 'attack') p.moveBlocked = true;
+    FX.popup(Opp.chest().add(new V3(0, 1.2, 0)), 'ESCAPED', 'tag small', Render.camera);
+    this.heat = 0;
+  },
+};
+
 'use strict';
 /* ============================================================
    Training room: short playable lessons against a held-back Varukh.
@@ -11426,6 +11622,7 @@ const Duel = {
         break;
       }
       case 'pun': Tempo.punish(Opp.chest()); break;
+      case 'brk': Clarity.onBroke(); break;
       case 'miss':
         // our strike was blocked: the string is broken, and a blocked big hit leaves us wide open
         if (m.why === 'blocked' && p.state === 'attack' && p.move) {
@@ -11444,7 +11641,7 @@ const Duel = {
         break;
       }
       case 'gb': FX.popup(Opp.chest().add(new V3(0, 1.1, 0)), 'GUARD BREAK', 'break', Render.camera); Sfx.P('sfx_posture_break', 0.9) || Sfx.boom(0.6); FX.shake(0.3); break;
-      case 'fx': { const f = FX[m.f]; if (f) { this.mirror = false; f.apply(FX, m.a.map(deserArg)); } break; }
+      case 'fx': { const f = FX[m.f]; if (f && !(Clarity.busy() && (m.f === 'impactLines' || m.f === 'burst') && Math.random() < 0.6)) { this.mirror = false; f.apply(FX, m.a.map(deserArg)); } break; }
       case 'pr': G.proj.push(new Projectile({ pos: new V3(...m.pos), vel: new V3(...m.vel), r: m.r, owner: 'ghost', dmg: 0, life: m.life, kind: m.kind })); break;
       case 'cut': CutIn.play(Opp.rig, 'boss', m.name, m.sub, 1.1); FX.speedBg(1.1, true); break;
       case 'ult': this.ultVisual(Opp.def.pal, new V3(m.at[0], 0, m.at[1])); break;
@@ -11524,12 +11721,13 @@ const Duel = {
     else { slowmo(0.3, 1); Render.post.flash = 0.3; }
     if (!forfeit && this.wins[0] < 2 && this.wins[1] < 2) {
       HUD.banner(why || (won ? 'ROUND ' + this.round : 'ROUND LOST'), won ? 'fight' : 'flow');
-      if (won) Sfx.stinger && Sfx.stinger('stinger_round'); 
+      if (won) { Sfx.stinger && Sfx.stinger('stinger_round'); Clips.mark('ROUND ' + this.round + ' K.O.', 4); }
       const r = this.round;
       setTimeout(() => { if (this.active && this.ended && !this.matchDone && this.round === r) this.nextRound(); }, 2900);
       return;
     }
     this.matchDone = true;
+    if (won && !forfeit) Clips.mark('MATCH K.O.', 6, 3.2);
     if (won) { const f = Progress.finOf(Hero.id); if (f) { setTimeout(() => FinisherFX.play(f, Opp.chest()), 250); this.send({ t: 'fin', f }); } }
     this.xpRes = Progress.grant(this.match.kind === 'bot' ? 'bot' : 'online', won, { diff: Lobby.lastDiff });
     Sfx.intensity = 0; if (won) setTimeout(() => Sfx.victory(), 700); else Sfx.defeat();
@@ -11561,6 +11759,7 @@ const Duel = {
     $('endPanel').className = 'panel show ' + (won ? 'win' : 'lose');
     G.state = won ? 'victory' : 'defeat';
     Input.unlock();
+    Clips.showEnd();
   },
   renderResult() {
     const r = this.result, m = this.match;
@@ -11607,7 +11806,7 @@ const Duel = {
     this.rmMe = this.rmOpp = false; this.matchDone = false; this.round = 0; this.wins = [0, 0];
     $('endPanel').className = 'panel'; $('hud').classList.add('show');
     G.stats = { time: 0, maxCombo: 0, perfect: 0, deflects: 0, breaks: 0, dmgTaken: 0, counters: 0, specials: 0 };
-    this.ended = true; this.nextRound();
+    Clips.reset(); this.ended = true; this.nextRound();
     Input.lock();
   },
   // leave the duel and restore solo mode
@@ -11965,7 +12164,7 @@ const QUALITY = {
 const Q_ORDER = ['ultra', 'high', 'medium', 'low'];
 
 const Settings = {
-  v: { quality: 'auto', sens: 1, invertY: false, shake: 1, master: 0.7, music: 0.55, fps: true, camLag: true, lines: true, drs: true },
+  v: { quality: 'auto', sens: 1, invertY: false, shake: 1, master: 0.7, music: 0.55, fps: true, camLag: true, lines: true, drs: true, clips: true },
   load() {
     try { const s = JSON.parse(localStorage.getItem('galeborn.settings') || '{}'); Object.assign(this.v, s); } catch (e) {}
   },
@@ -12037,6 +12236,7 @@ const Menu = {
       { key: 'drs', label: 'Dynamic resolution', type: 'toggle' },
       { key: 'camLag', label: 'Chase camera lag', type: 'toggle' },
       { key: 'lines', label: 'Speed lines', type: 'toggle' },
+      { key: 'clips', label: 'Record highlight clips', type: 'toggle' },
       { key: 'shake', label: 'Screen shake', type: 'range', min: 0, max: 1.5, step: 0.1, fmt: pct },
       { key: 'master', label: 'Master volume', type: 'range', min: 0, max: 1, step: 0.05, fmt: pct },
       { key: 'music', label: 'Music volume', type: 'range', min: 0, max: 1, step: 0.05, fmt: pct },
@@ -12301,7 +12501,7 @@ const Cam = {
     this.side = damp(this.side, this.sideT ?? 1, 1.5, dt);
     this.pitch = clamp(this.pitch + a.cy, -0.12, 1.05);
     const sep = lockOK ? dPB : 0;
-    const dist = clamp(5.4 + sep * 0.32, 5.4, 14);
+    const dist = clamp(5.4 + sep * 0.32, 5.4, 14) + Clarity.zoom * 2.6;
     const right = new V3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     const lat = (lockOK ? 1.25 : 0.6) * this.side;
     const focus = new V3(p.pos.x, p.pos.y * 0.75 + 1.45, p.pos.z).addScaledVector(right, lat);
@@ -12311,7 +12511,7 @@ const Cam = {
       outLook.lerp(bc, clamp(0.35 + sep * 0.012, 0.35, 0.55));
       if (b.pos.y > 1) outLook.y = lerp(outLook.y, bc.y, 0.3);
     }
-    const pitch = this.pitch;
+    const pitch = this.pitch + Clarity.zoom * 0.12;
     outPos.set(focus.x + Math.sin(this.yaw) * Math.cos(pitch) * dist, focus.y + Math.sin(pitch) * dist + 0.3, focus.z + Math.cos(this.yaw) * Math.cos(pitch) * dist);
     if (outPos.y < 0.45) outPos.y = 0.45;
     // keep the camera inside the arena and out of standing pillars
@@ -12438,6 +12638,7 @@ G.onVictory = function () {
   Sfx.boom(1.5); Sfx.intensity = 0;
   HUD.banner('', '');
   G.endT = 0; G.won = true;
+  Clips.mark('VARUKH FALLS', 6, 4);
   const b = G.boss, p = G.player;
   FX.shockwave(b.chest(new V3()), 1, 2.5, 0.9); FX.impactLines(b.chest(new V3()), 30, 0xffffff, 8, 0.4);
   Cam.cine = (dt, cam) => {
@@ -12481,6 +12682,7 @@ function showEnd(win) {
   $('endTitle').textContent = win ? 'VICTORY' : 'DEFEATED';
   $('endSub').textContent = win ? 'The Cinder Warden falls. The winds are yours.' : 'The embers swallow the sky… rise again.';
   $('endPanel').className = 'panel show ' + (win ? 'win' : 'lose');
+  Clips.showEnd();
   const xr = Progress.grant('solo', win);
   const m = Math.floor(s.time / 60), sec = Math.floor(s.time % 60);
   $('endStats').innerHTML = `
@@ -12497,6 +12699,7 @@ G.reset = function () {
   for (const h of G.hazards) if (!h.done) h.dispose();
   G.proj.length = 0; G.hazards.length = 0;
   FX.clear();
+  Clips.reset();
   G.player.reset(); G.boss.cancelAttack(); G.boss.reset();
   G.timeScale = G.tsTarget = 1; G.slowT = 0; G.bossScale = G.bossScaleTarget = 1; G.hitstop = 0; G.flowT = 0;
   G.stats = { time: 0, maxCombo: 0, perfect: 0, deflects: 0, breaks: 0, dmgTaken: 0, counters: 0, specials: 0 };
@@ -12573,7 +12776,7 @@ function main() {
   Input.init(Render.r.domElement);
   HUD.init();
   CutIn.init();
-  Menu.init(); Settings.apply(); Select.build(); if (!IS_BOT) { Lobby.init(); Profile.init(); } SpeedLines.init();
+  Menu.init(); Settings.apply(); Select.build(); if (!IS_BOT) { Lobby.init(); Profile.init(); Clips.init(); } SpeedLines.init();
   try { const h = localStorage.getItem('galeborn.hero'); if (HEROES[h]) Hero.apply(h); } catch (e) {}
   G.setHero(Hero.id);
   G.boss = new Boss();
@@ -12602,7 +12805,7 @@ function main() {
     if (!IS_BOT) requestAnimationFrame(frame);
     const elapsed = IS_BOT ? botRaw : (now - last) / 1000;
     const raw = Math.min(elapsed, 1 / 20); last = now;
-    Quality.tick(Math.min(elapsed, 1)); Perf.tick(Math.min(elapsed, 1));
+    Quality.tick(Math.min(elapsed, 1)); Perf.tick(Math.min(elapsed, 1)); Clips.update();
     G.time += raw;
     const a = IS_BOT ? BotAI.input(raw) : Input.poll();
     if (a.mute) Sfx.setMuted(!Sfx.muted);
@@ -12665,7 +12868,7 @@ function main() {
       else { Duel.mirror = Duel.active; G.player.update(pdt, a); Duel.mirror = false; G.boss.update(Duel.active ? sim : bdt); }
       Duel.tick(raw);
       for (const p of G.proj) { p.update(p.owner === 'boss' ? bdt : pdt, Render.camera); if (!p.dead && p.owner === 'boss') Graze.check(p, G.player); }
-      ProjClash.update(); Arena.update(pdt); Tempo.update(pdt); Training.update(pdt);
+      ProjClash.update(); Arena.update(pdt); Tempo.update(pdt); Clarity.update(pdt); Training.update(pdt);
       for (let i = G.proj.length - 1; i >= 0; i--) if (G.proj[i].dead) G.proj.splice(i, 1);
       // wind cancels fire: player projectiles destroy fireballs
       for (const p of G.proj) if (p.owner === 'player' && !p.dead && p.kind !== 'fireball') for (const q of G.proj) if (q.owner === 'boss' && !q.dead && p.pos.distanceTo(q.pos) < p.r + q.r) { q.explode(); Sfx.deflect(); G.player.gainFlow(4); }
@@ -12696,7 +12899,7 @@ function main() {
     P.tintAmt = damp(P.tintAmt, G.flowT > 0 || G.player.state === 'special' ? 0.55 : 0, 6, raw);
     P.lowHp = damp(P.lowHp, G.player.hp < 30 && G.player.alive ? 0.6 + Math.sin(G.time * 6) * 0.25 : 0, 4, raw);
     if (G.state !== 'title') HUD.update(raw);
-    if (!IS_BOT) Render.render(G.time);
+    if (!IS_BOT) { Render.render(G.time); Clips.grab(); }
     Input.endFrame();
   }
   if (IS_BOT) { Quality.set && Quality.set('low'); Quality.tick = () => {}; BotAI.init(frame); }
@@ -12708,5 +12911,5 @@ window.addEventListener('load', () => {
 });
 
 </script>
-<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1115-2302</div></body>
+<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1115-2320</div></body>
 </html>

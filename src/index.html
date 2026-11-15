@@ -204,6 +204,12 @@ body.awake .portrait, body.awake #flowRingFg { filter: drop-shadow(0 0 8px #5ff0
 #endStats div { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.15); padding: 4px 0; }
 #endStats span { opacity: 0.75; } #endStats b { color: var(--wind); }
 #endStats div.xpLine { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; grid-column: 1 / -1; border: none; } #endStats .xpLine span { opacity: 1; } #endStats .xpLine i, #endStats .xpLine small { flex-basis: 100%; }
+#clipBox { display: none; flex-direction: column; align-items: center; gap: 6px; margin: -10px 0 18px; width: min(420px, 100%); }
+#clipBox.show { display: flex; }
+#clipBox video { height: min(26vh, 236px); max-width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border: 3px solid var(--ink); border-radius: 6px; background: #000; box-shadow: 0 0 18px rgba(120,220,255,.25); }
+#clipBox .clipBar { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+#clipBox .clipBar b { font-style: italic; letter-spacing: 1px; color: #ffe080; font-size: 14px; }
+#clipBox .btn.small { padding: 6px 12px; font-size: 13px; }
 #endStats .rank { grid-column: 1 / -1; justify-content: center; gap: 20px; align-items: center; border: none; }
 #endStats .rank b { font-size: 64px; font-style: italic; color: #ffe080; text-shadow: 4px 4px 0 var(--ink), 0 0 20px #ffb020; }
 #pause { background: rgba(8,6,14,0.82); z-index: 40; }
@@ -406,7 +412,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
 <div class="panel" id="pause"><h1>PAUSED</h1><h2 class="settingsTitle">SETTINGS</h2><div id="settings"></div><p class="hintline"><span class="ic" data-act="pause"></span> back</p></div>
 <div id="fps">60 FPS</div>
 <div id="moment"></div>
-<div class="panel" id="endPanel"><h1 id="endTitle">VICTORY</h1><p id="endSub"></p><div id="endStats"></div><button class="btn" id="retryBtn">FIGHT AGAIN</button> <button class="btn small" id="heroBtn">CHANGE HERO</button><p class="rhint" style="font-size:13px;opacity:.75"><span class="ic" data-act="restart"></span> to restart</p></div>
+<div class="panel" id="endPanel"><h1 id="endTitle">VICTORY</h1><p id="endSub"></p><div id="endStats"></div><div id="clipBox"><video id="clipVid" muted loop playsinline></video><div class="clipBar"><b id="clipName"></b><span><button class="btn small" id="clipSave">SAVE CLIP</button> <button class="btn small" id="clipShare">SHARE</button> <button class="btn small" id="clipNext">NEXT</button></span></div></div><button class="btn" id="retryBtn">FIGHT AGAIN</button> <button class="btn small" id="heroBtn">CHANGE HERO</button><p class="rhint" style="font-size:13px;opacity:.75"><span class="ic" data-act="restart"></span> to restart</p></div>
 <div id="help">
   <div><b>Move</b><span class="ic" data-act="move"></span></div><div><b>Jump ×2</b><span class="ic" data-act="jump"></span></div>
   <div><b>Dash</b><span class="ic" data-act="dash"></span></div><div><b>Strike</b><span class="ic" data-act="light"></span></div>

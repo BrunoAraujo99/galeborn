@@ -1,0 +1,24 @@
+const { chromium } = require('playwright');
+(async () => {
+  const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--allow-file-access-from-files', '--autoplay-policy=no-user-gesture-required'] });
+  const page = await b.newPage({ viewport: { width: 960, height: 540 } });
+  const errs = []; page.on('pageerror', e => errs.push(e.message + ' ' + (e.stack || '').split('\n')[1]));
+  await page.goto('file:///home/claude/duel/dist/galeborn.html');
+  await page.waitForFunction(() => window.__G && __G.player.rig.model, null, { timeout: 90000 });
+  console.log('ok', await page.evaluate(() => Clips.ok + ' ' + Clips.mime));
+  await page.evaluate(() => { Quality.set('low'); $('title').classList.add('hide'); __G.beginFight(); });
+  await page.waitForFunction(() => G.state === 'fight', null, { timeout: 30000 });
+  await page.waitForTimeout(6000);
+  console.log('rec', await page.evaluate(() => !!Clips.rec));
+  console.log('fire', await page.evaluate(() => Moment.fire('PURSUIT', 'test', __G.boss.chest(new THREE.Vector3()), null, 2) + ' ' + JSON.stringify(Clips.pend)));
+  await page.waitForTimeout(3500); console.log('mid', await page.evaluate(() => JSON.stringify(Clips.pend) + ' rec=' + !!Clips.rec + ' st=' + G.state + ' act=' + Clips.active() + ' now=' + performance.now()));
+  await page.waitForTimeout(8000);
+  console.log('kept', await page.evaluate(() => Clips.kept.map(k => k.name + ':' + k.score + ':' + k.blob.size + ':' + k.dur.toFixed(1)).join(' ')));
+  await page.waitForTimeout(500);
+  await page.evaluate(() => { __G.boss.hp = 0; G.onVictory(); });
+  await page.waitForFunction(() => $('endPanel').classList.contains('show'), null, { timeout: 60000 });
+  await page.waitForTimeout(2500);
+  console.log('end', await page.evaluate(() => $('clipBox').className + ' | ' + $('clipName').textContent + ' | ' + Clips.kept.map(k => k.name + ':' + Math.round(k.score) + ':' + k.blob.size).join(' ') + ' | vid ' + $('clipVid').readyState + ' ' + $('clipVid').videoWidth));
+  await page.screenshot({ path: '/tmp/claude-0/-home-claude/45214761-3904-53f4-8044-d56d16cf60da/scratchpad/clip_end.png' });
+  console.log('ERRORS', errs.join('\n')); await b.close();
+})();

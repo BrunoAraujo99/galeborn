@@ -12,7 +12,7 @@ const QUALITY = {
 const Q_ORDER = ['ultra', 'high', 'medium', 'low'];
 
 const Settings = {
-  v: { quality: 'auto', sens: 1, invertY: false, shake: 1, master: 0.7, music: 0.55, fps: true, camLag: true, lines: true, drs: true },
+  v: { quality: 'auto', sens: 1, invertY: false, shake: 1, master: 0.7, music: 0.55, fps: true, camLag: true, lines: true, drs: true, clips: true },
   load() {
     try { const s = JSON.parse(localStorage.getItem('galeborn.settings') || '{}'); Object.assign(this.v, s); } catch (e) {}
   },
@@ -84,6 +84,7 @@ const Menu = {
       { key: 'drs', label: 'Dynamic resolution', type: 'toggle' },
       { key: 'camLag', label: 'Chase camera lag', type: 'toggle' },
       { key: 'lines', label: 'Speed lines', type: 'toggle' },
+      { key: 'clips', label: 'Record highlight clips', type: 'toggle' },
       { key: 'shake', label: 'Screen shake', type: 'range', min: 0, max: 1.5, step: 0.1, fmt: pct },
       { key: 'master', label: 'Master volume', type: 'range', min: 0, max: 1, step: 0.05, fmt: pct },
       { key: 'music', label: 'Music volume', type: 'range', min: 0, max: 1, step: 0.05, fmt: pct },

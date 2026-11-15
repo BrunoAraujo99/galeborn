@@ -456,16 +456,17 @@ class Player {
     Pursuit.arm(this, tag);
     Kit.onHit(this, res, point, dir, big, tag);
     if (res.interrupt) Moment.fire('INTERRUPT', 'HIS ATTACK SHATTERED', point, dir, 2);
+    Clarity.hit(big);
     hitstop(stop);
-    FX.shake(big ? 0.55 : 0.24);
+    FX.shake(big ? 0.55 : Clarity.fx(0.24));
     Sfx.hit(big ? 1.5 : 1);
     FX.hitSpark(point, dir, big, false);
-    FX.impactLines(point, big ? 18 : 9, HC.glow, big ? 4.5 : 2.4, big ? 0.24 : 0.16);
+    if (big || !Clarity.busy()) FX.impactLines(point, big ? 18 : 9, HC.glow, big ? 4.5 : 2.4, big ? 0.24 : 0.16);
     if (big) {
       Render.post.impact = Math.max(Render.post.impact, 1); Render.post.aberr = 1.2; Render.post.speed = Math.max(Render.post.speed, 1);
       FX.fovKick -= 6; FX.shockwave(point, 0.45, 1.2); FX.sfxWord(point, false);
       Cam.dutch((Math.random() < 0.5 ? -1 : 1) * 0.07);
-    } else FX.fovKick -= 1.2;
+    } else FX.fovKick -= Clarity.fx(1.2);
     const label = this.hitLabel || { counter: 'COUNTER', finisher: 'FINISHER', splat: 'WALL SPLAT', slam: 'CRASH', reflect: 'RETURN', rush: 'GALE RUSH', pursuit: 'PURSUIT', skyfall: 'SKYFALL', topple: 'TOPPLE', launcher: 'LAUNCH' }[tag] || '';
     FX.dmgNumber(point, res.dmg, tag === 'counter' || tag === 'splat' ? 'gold' : this.hitKind || (big ? 'big' : ''), label);
     if (tag === 'counter' || tag === 'finisher' || tag === 'splat') {
@@ -685,6 +686,7 @@ class Player {
     if (this.invuln > 0) return 'immune';
     const gr = kind === 'burst' ? '' : Guard.check(this, dmg, dir, kind, src);
     if (gr) return gr;
+    if (src === 'pvp' && kind !== 'chip' && kind !== 'burst' && Clarity.on() && Clarity.chain(this)) { Clarity.breakAway(this, dir); return 'dodged'; }
     if (kind === 'burst') kind = 'heavy';
     if (this.state === 'guardbreak') dmg = Math.round(dmg * 1.25);
     if (this.recovering() && kind !== 'chip') {
@@ -702,8 +704,9 @@ class Player {
     G.stats.dmgTaken += dmg;
     this.combo = 0; this.counterT = 0;
     for (const k in this.trails) this.trails[k].emit = false;
-    Sfx.playerHurt(); FX.shake(kind === 'light' ? 0.35 : 0.6); hitstop(kind === 'light' ? 0.06 : 0.1);
-    Render.post.aberr = 1.2;
+    Clarity.hit(kind !== 'light');
+    Sfx.playerHurt(); FX.shake(kind === 'light' ? Clarity.fx(0.35) : 0.6); hitstop(kind === 'light' ? 0.06 : 0.1);
+    Render.post.aberr = kind === 'light' ? Clarity.fx(1.2) : 1.2;
     FX.dmgNumber(this.chest(), dmg, 'hurt'); if (kind !== 'light') { FX.sfxWord(this.chest(), true); Cam.dutch(0.06); }
     this.yaw = yawOf(-dir.x, -dir.z);
     if (this.hp <= 0) {
@@ -731,7 +734,7 @@ class Player {
     } else {
       // in a duel a light hit only nudges, so a well-timed string can actually combo
       const kb = src === 'pvp' ? 2.2 : 7;
-      this.state = 'hit'; this.st = 0; this.stunDur = src === 'pvp' ? 0.38 : 0.3;
+      this.state = 'hit'; this.st = 0; this.stunDur = src === 'pvp' ? Clarity.stun(this, 0.38) : 0.3;
       this.vel.set(dir.x * kb, Math.max(this.vel.y, 0), dir.z * kb);
     }
     return 'hit';

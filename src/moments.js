@@ -18,6 +18,7 @@ const Moment = {
     if (now - (this.last[name] || -99) < (level > 1 ? 0.8 : 1.5) || now < this.gap) return false;
     this.last[name] = now; this.gap = now + 0.5;
     if (G.stats) G.stats.moments = (G.stats.moments || 0) + 1;
+    Clips.mark(name, level > 1 ? 3 : 1);
     const el = $('moment');
     el.innerHTML = `<div class="mn">${name}</div>${sub ? `<div class="ms">${sub}</div>` : ''}`;
     el.className = ''; void el.offsetWidth; el.className = 'show lv' + level;

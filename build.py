@@ -1,5 +1,5 @@
 import sys, base64, os, glob, json, shutil, datetime
-order=['core','audio','fx','heroes','rig','heromodel','world','combat','player','boss','ui','anime','moments','spectacle','kits','movesets','depth','arena','tempo','training','progress','profile','select','net','duel','bot','lobby','settings','perf','main']
+order=['core','audio','fx','heroes','rig','heromodel','world','combat','player','boss','ui','anime','moments','clips','spectacle','kits','movesets','depth','arena','tempo','clarity','training','progress','profile','select','net','duel','bot','lobby','settings','perf','main']
 game='\n'.join(open(f'src/{n}.js').read() for n in order)
 libs=open('src/three.min.js').read()+'\n'+open('src/gltfloader.js').read()+'\n'+open('src/vendor/supabase.js').read()
 HEROES=['wind','fire','earth','water']
