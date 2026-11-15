@@ -8,7 +8,7 @@
 const NET_CFG = {
   url: 'https://yhsfwftdtvtiarvookiy.supabase.co',
   key: 'sb_publishable_gNeQ8vVnW9yxBvys816aNg_V9eQRyEh', // publishable (client-safe) key
-  site: 'https://galeborn.vercel.app/',
+  site: 'https://galeborn-rho.vercel.app/',
 };
 const Api = {
   sb: null, me: null,

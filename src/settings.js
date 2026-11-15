@@ -16,7 +16,7 @@ const Settings = {
   load() {
     try { const s = JSON.parse(localStorage.getItem('galeborn.settings') || '{}'); Object.assign(this.v, s); } catch (e) {}
   },
-  save() { try { localStorage.setItem('galeborn.settings', JSON.stringify(this.v)); } catch (e) {} },
+  save() { if (IS_BOT) return; try { localStorage.setItem('galeborn.settings', JSON.stringify(this.v)); } catch (e) {} },
   apply() {
     const v = this.v;
     Input.sens = v.sens; Input.invY = v.invertY;

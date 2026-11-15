@@ -255,7 +255,7 @@ G.beginFight = function (quick) {
 /* ---------------- hero swap: rebuild the player around another model ---------------- */
 G.setHero = function (id, cb) {
   Hero.apply(id);
-  try { localStorage.setItem('galeborn.hero', id); } catch (e) {}
+  if (!IS_BOT) try { localStorage.setItem('galeborn.hero', id); } catch (e) {}
   const old = G.player;
   if (old) {
     Render.scene.remove(old.rig.root);
@@ -290,7 +290,7 @@ function main() {
   Input.init(Render.r.domElement);
   HUD.init();
   CutIn.init();
-  Menu.init(); Settings.apply(); Select.build(); Lobby.init(); SpeedLines.init();
+  Menu.init(); Settings.apply(); Select.build(); if (!IS_BOT) Lobby.init(); SpeedLines.init();
   try { const h = localStorage.getItem('galeborn.hero'); if (HEROES[h]) Hero.apply(h); } catch (e) {}
   G.setHero(Hero.id);
   G.boss = new Boss();
@@ -314,13 +314,13 @@ function main() {
   $('settingsBtn').addEventListener('click', e => { e.stopPropagation(); Sfx.init(); togglePause(true); });
   let last = performance.now();
   window.__G = G;
-  function frame(now) {
-    requestAnimationFrame(frame);
-    const elapsed = (now - last) / 1000;
+  function frame(now, botRaw) {
+    if (!IS_BOT) requestAnimationFrame(frame);
+    const elapsed = IS_BOT ? botRaw : (now - last) / 1000;
     const raw = Math.min(elapsed, 1 / 20); last = now;
     Quality.tick(Math.min(elapsed, 1));
     G.time += raw;
-    const a = Input.poll();
+    const a = IS_BOT ? BotAI.input(raw) : Input.poll();
     if (a.mute) Sfx.setMuted(!Sfx.muted);
     if (a.help) setHelp(!$('help').classList.contains('show'));
     $('deviceHint').textContent = Input.lastDevice === 'pad' ? 'pad' : 'kb';
@@ -411,10 +411,11 @@ function main() {
     P.tintAmt = damp(P.tintAmt, G.flowT > 0 || G.player.state === 'special' ? 0.55 : 0, 6, raw);
     P.lowHp = damp(P.lowHp, G.player.hp < 30 && G.player.alive ? 0.6 + Math.sin(G.time * 6) * 0.25 : 0, 4, raw);
     if (G.state !== 'title') HUD.update(raw);
-    Render.render(G.time);
+    if (!IS_BOT) Render.render(G.time);
     Input.endFrame();
   }
-  requestAnimationFrame(frame);
+  if (IS_BOT) { Quality.set && Quality.set('low'); Quality.tick = () => {}; BotAI.init(frame); }
+  else requestAnimationFrame(frame);
 }
 window.addEventListener('load', () => {
   try { main(); }

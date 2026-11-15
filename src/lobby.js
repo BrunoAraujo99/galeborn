@@ -8,10 +8,12 @@ const Lobby = {
   init() {
     try { const q = new URLSearchParams(location.search).get('room'); if (q) this.pendingRoom = q.toUpperCase().slice(0, 5); } catch (e) {}
     $('lbClose').addEventListener('click', () => this.close());
+    $('lbBody').addEventListener('click', e => { const b = e.target.closest('[data-bot]'); if (!b) return; Sfx.ui(); if (this.mode === 'ranked') Api.queueLeave(); this.mode = null; clearTimeout(this.pollT); startBotMatch(b.dataset.bot); });
     $('lbName').addEventListener('change', e => this.saveName(e.target.value));
     $('boardClose').addEventListener('click', () => $('board').classList.remove('show'));
     $('lbBtn').addEventListener('click', e => { e.stopPropagation(); Sfx.init(); this.board(); });
     $('friendBtn').addEventListener('click', e => { e.stopPropagation(); Sfx.init(); Select.open('friend'); });
+    $('botBtn').addEventListener('click', e => { e.stopPropagation(); Sfx.init(); Select.open('bot'); });
     $('soloBtn').addEventListener('click', e => { e.stopPropagation(); Sfx.init(); Select.open('solo'); });
   },
   set(html) { $('lbBody').innerHTML = html; },
@@ -19,29 +21,43 @@ const Lobby = {
   async open(mode) {
     this.mode = mode;
     $('lobby').classList.add('show');
-    $('lbTitle').textContent = mode === 'ranked' ? 'RANKED DUEL' : 'DUEL A FRIEND';
-    this.set(''); this.status('Connecting…');
+    $('lbTitle').textContent = mode === 'ranked' ? 'RANKED DUEL' : mode === 'bot' ? 'DUEL A BOT' : 'DUEL A FRIEND';
+    this.set('');
+    $('lbName').parentElement.style.display = mode === 'bot' ? 'none' : '';
+    if (mode === 'bot') return this.botMenu();
+    BotHost.ensure(); // warm the bot up in the background so a fallback match starts instantly
+    this.status('Connecting…');
     try {
       const me = await Api.ensure(this.defaultName());
       $('lbName').value = me.name;
       $('lbMe').textContent = `Rating ${me.rating} · #${me.rank} · ${me.wins}W ${me.losses}L`;
-    } catch (e) { return this.status('Can\'t reach the Galeborn server. Check your connection and try again.', true); }
+    } catch (e) { this.status('Can\'t reach the Galeborn server. You can still fight a bot offline.', true); return this.set(this.botButtons()); }
     if (mode === 'ranked') return this.search();
     if (this.pendingRoom) { const c = this.pendingRoom; this.pendingRoom = null; return this.join(c); }
     this.status('Create a room and send the code or link to a friend, or join theirs.');
     this.set(`<button class="btn" id="lbCreate">CREATE ROOM</button>
-      <div class="lbJoin"><input id="lbCode" maxlength="5" placeholder="CODE" autocomplete="off"><button class="btn small" id="lbJoinBtn">JOIN</button></div>`);
+      <div class="lbJoin"><input id="lbCode" maxlength="5" placeholder="CODE" autocomplete="off"><button class="btn small" id="lbJoinBtn">JOIN</button></div>
+      <p class="lbOr">No one to play? Practice against a bot:</p>${this.botButtons()}`);
     $('lbCreate').onclick = () => this.create();
     $('lbJoinBtn').onclick = () => this.join($('lbCode').value);
     $('lbCode').onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') this.join($('lbCode').value); };
+  },
+  botButtons() {
+    return `<div class="lbBots">${['easy', 'normal', 'hard'].map(d => `<button class="btn small" data-bot="${d}">${BOT_DIFF[d].name} BOT</button>`).join('')}</div>`;
+  },
+  botMenu() {
+    BotHost.ensure();
+    this.status('A bot plays a random hero with the full moveset. Bot duels are unranked.');
+    this.set(this.botButtons());
   },
   defaultName() { return 'Wanderer' + Math.floor(Math.random() * 9000 + 1000); },
   async saveName(n) { try { const me = await Api.setName(n); $('lbName').value = me.name; } catch (e) { this.status('Name must be 2-16 letters or numbers.', true); } },
   // ---- ranked
   async search() {
-    this.set('<div class="lbSpin"></div>');
     const t0 = performance.now();
-    const tickTxt = () => this.status(`Searching for an opponent near your rating… ${Math.floor((performance.now() - t0) / 1000)}s`);
+    const FALLBACK = 25;
+    const tickTxt = () => { const s = Math.floor((performance.now() - t0) / 1000); this.status(`Searching for an opponent near your rating… ${s}s` + (s >= 8 ? ` · a bot steps in at ${FALLBACK}s` : '')); };
+    this.set('<div class="lbSpin"></div><p class="lbOr">Or fight a bot now (unranked):</p>' + this.botButtons());
     tickTxt();
     try {
       let r = await Api.queueJoin(Hero.id);
@@ -49,6 +65,7 @@ const Lobby = {
         await new Promise(res => (this.pollT = setTimeout(res, 2000)));
         if (this.mode !== 'ranked' || !$('lobby').classList.contains('show')) return;
         tickTxt();
+        if ((performance.now() - t0) / 1000 >= FALLBACK) { Api.queueLeave(); this.mode = null; this.status('No duelists online right now. Here\'s a bot.'); return startBotMatch('normal'); }
         r = await Api.queuePoll();
       }
       if (r.found) this.start(r.match);
@@ -91,7 +108,11 @@ const Lobby = {
     G.state = 'title'; $('title').classList.remove('hide'); $('select').classList.remove('show');
   },
   // after a duel: queue again (ranked) or reopen the friend menu
-  again() { const k = this.lastKind; Duel.leave(); G.reset(); G.state = 'select'; this.open(k === 'ranked' ? 'ranked' : 'friend'); },
+  again() {
+    const k = this.lastKind; Duel.leave(); G.reset();
+    if (k === 'bot') return startBotMatch(this.lastDiff || 'normal');
+    G.state = 'select'; this.open(k === 'ranked' ? 'ranked' : 'friend');
+  },
   async board() {
     $('board').classList.add('show');
     $('boardBody').innerHTML = '<div class="lbSpin"></div>';

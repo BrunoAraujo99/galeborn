@@ -111,6 +111,8 @@ body.duel #endPanel .rhint { display: none; }
 .lbJoin, .lbLink { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
 .lbLink input { width: min(320px, 100%); font-size: 12px; }
 .lbCode { font-size: 64px; font-weight: 900; letter-spacing: .25em; color: #fff; text-shadow: 4px 4px 0 var(--ink), 0 0 26px var(--wind); }
+.lbBots { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+.lbOr { font-size: 12px; opacity: .7; margin: 16px 0 0; }
 .lbSpin { width: 34px; height: 34px; margin: 18px auto; border: 4px solid rgba(255,255,255,.15); border-top-color: var(--wind); border-radius: 50%; animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 #board table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -345,7 +347,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
 <div id="title">
   <h1>GALEBORN</h1>
   <h2>DUEL ON THE SUNDERED SPIRE</h2>
-  <div class="modes"><button class="btn" id="playBtn">DUEL ONLINE</button><button class="btn" id="friendBtn">DUEL A FRIEND</button><button class="btn alt" id="soloBtn">SOLO · VARUKH</button><button class="btn small" id="lbBtn">LEADERBOARD</button></div>
+  <div class="modes"><button class="btn" id="playBtn">DUEL ONLINE</button><button class="btn" id="friendBtn">DUEL A FRIEND</button><button class="btn alt" id="botBtn">DUEL A BOT</button><button class="btn alt" id="soloBtn">SOLO · VARUKH</button><button class="btn small" id="lbBtn">LEADERBOARD</button></div>
   <button class="btn small" id="settingsBtn">SETTINGS</button>
   <div class="controls">
     <div><b>Move</b><span class="ic" data-act="move"></span></div>

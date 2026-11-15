@@ -1,5 +1,5 @@
 import sys
-order=['core','audio','fx','heroes','rig','heromodel','world','combat','player','boss','ui','anime','moments','spectacle','kits','select','net','duel','lobby','settings','main']
+order=['core','audio','fx','heroes','rig','heromodel','world','combat','player','boss','ui','anime','moments','spectacle','kits','select','net','duel','bot','lobby','settings','main']
 game='\n'.join(open(f'src/{n}.js').read() for n in order)
 three=open('src/three.min.js').read()+'\n'+open('src/gltfloader.js').read()+'\n'+open('src/vendor/supabase.js').read()
 import base64,os

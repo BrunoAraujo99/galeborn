@@ -187,6 +187,7 @@ const Duel = {
   // per frame, after the local fighter updated
   tick(raw) {
     if (!this.active) return;
+    if (this.link && this.link.tick) this.link.tick(raw);
     const p = G.player;
     if (!this.started) {
       this.helloT -= raw;
@@ -267,7 +268,7 @@ const Duel = {
     const won = G.won, m = this.match;
     $('endTitle').textContent = won ? 'VICTORY' : 'DEFEAT';
     $('endSub').textContent = `vs ${m.opp.name} · ${(HEROES[m.opp.hero] || HEROES.wind).name}`;
-    $('retryBtn').textContent = m.kind === 'ranked' ? 'FIND NEXT DUEL' : 'BACK TO ROOM';
+    $('retryBtn').textContent = m.kind === 'ranked' ? 'FIND NEXT DUEL' : m.kind === 'bot' ? 'REMATCH' : 'BACK TO ROOM';
     $('heroBtn').textContent = 'MAIN MENU';
     this.renderResult();
     $('endPanel').className = 'panel show ' + (won ? 'win' : 'lose');
@@ -277,7 +278,7 @@ const Duel = {
   renderResult() {
     const r = this.result, m = this.match;
     const s = G.stats;
-    let rate = m.kind !== 'ranked' ? '<div><span>Friendly duel</span><b>unranked</b></div>' : r ? `<div><span>Rating</span><b>${(r.winner === Api.me?.id ? '+' : '−') + (r.delta || 0)}</b></div>` : '<div><span>Rating</span><b>…</b></div>';
+    let rate = m.kind === 'bot' ? `<div><span>Bot · ${m.opp.rating}</span><b>unranked</b></div>` : m.kind !== 'ranked' ? '<div><span>Friendly duel</span><b>unranked</b></div>' : r ? `<div><span>Rating</span><b>${(r.winner === Api.me?.id ? '+' : '−') + (r.delta || 0)}</b></div>` : '<div><span>Rating</span><b>…</b></div>';
     $('endStats').innerHTML = rate + `<div><span>Time</span><b>${Math.round(s.time)}s</b></div><div><span>Best combo</span><b>${s.maxCombo}</b></div><div><span>Perfect dodges</span><b>${s.perfect}</b></div><div><span>Highlights</span><b>${s.moments || 0}</b></div>`;
   },
   // leave the duel and restore solo mode

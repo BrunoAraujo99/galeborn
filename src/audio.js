@@ -5,6 +5,7 @@
 const Sfx = {
   ctx: null, master: null, music: null, muted: false, musicOn: true,
   init() {
+    if (typeof IS_BOT !== 'undefined' && IS_BOT) return;
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
