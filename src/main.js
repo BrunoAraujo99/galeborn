@@ -175,6 +175,7 @@ G.onVictory = function () {
 };
 G.onDefeat = function (why) {
   if (Duel.active) return Duel.finish(false, why);
+  if (Training.active) { const p = G.player; p.alive = true; p.hp = p.maxHp; p.toMove(); p.invuln = 1; return; }
   G.state = 'ending'; G.won = false;
   slowmo(0.25, 1.2);
   Render.post.flash = 0.3; Sfx.intensity = 0; Sfx.defeat();
@@ -382,7 +383,7 @@ function main() {
       else { Duel.mirror = Duel.active; G.player.update(pdt, a); Duel.mirror = false; G.boss.update(Duel.active ? sim : bdt); }
       Duel.tick(raw);
       for (const p of G.proj) { p.update(p.owner === 'boss' ? bdt : pdt, Render.camera); if (!p.dead && p.owner === 'boss') Graze.check(p, G.player); }
-      ProjClash.update(); Arena.update(pdt); Tempo.update(pdt);
+      ProjClash.update(); Arena.update(pdt); Tempo.update(pdt); Training.update(pdt);
       for (let i = G.proj.length - 1; i >= 0; i--) if (G.proj[i].dead) G.proj.splice(i, 1);
       // wind cancels fire: player projectiles destroy fireballs
       for (const p of G.proj) if (p.owner === 'player' && !p.dead && p.kind !== 'fireball') for (const q of G.proj) if (q.owner === 'boss' && !q.dead && p.pos.distanceTo(q.pos) < p.r + q.r) { q.explode(); Sfx.deflect(); G.player.gainFlow(4); }

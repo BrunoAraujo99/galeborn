@@ -48,6 +48,6 @@ const Select = {
     if (!G.player.rig.model && HERO_B64()[Hero.id]) return;
     $('select').classList.remove('show');
     Sfx.ui(); Sfx.bigWhoosh();
-    if (this.mode === 'solo') G.startIntro(); else Lobby.open(this.mode);
+    if (this.mode === 'solo') G.startIntro(); else if (this.mode === 'training') Training.start(); else Lobby.open(this.mode);
   },
 };

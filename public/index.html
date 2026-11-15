@@ -101,8 +101,22 @@ body.duel #endPanel .rhint { display: none; }
 #heat s { background: rgba(255,255,255,.15); box-shadow: none; }
 .dnum.burn span { font-size: 22px; color: #ffcf60; }
 .popup.heal, .tag.heal { color: #7fffb0; }
-.modes { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.modes .btn { min-width: 300px; }
+.menu { display: flex; gap: 34px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+.mgroup { display: flex; flex-direction: column; gap: 10px; align-items: stretch; min-width: 300px; }
+.mlabel { font-weight: 900; letter-spacing: .5em; font-size: 12px; color: var(--wind); text-align: left; padding-left: 8px; text-shadow: 2px 2px 0 var(--ink); }
+.mgroup .btn { display: flex; flex-direction: column; align-items: flex-start; padding: 10px 28px; font-size: 19px; text-align: left; }
+.mgroup .btn small { font-size: 10px; letter-spacing: .3em; opacity: .75; font-weight: 700; margin-top: 2px; }
+.btn.new::after { content: 'NEW'; position: absolute; right: -10px; top: -10px; background: #ffcc40; color: #1a1020; font-size: 10px; letter-spacing: .15em; padding: 2px 6px; border: 2px solid #000; }
+.mgroup .btn { position: relative; }
+.mbar { margin-top: 26px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.mb { font: inherit; font-size: 12px; font-weight: 800; letter-spacing: .22em; padding: 8px 16px; color: #dfe9ff; background: rgba(10,8,20,.6); border: 2px solid rgba(255,255,255,.35); cursor: pointer; text-decoration: none; transform: skewX(-12deg); }
+.mb:hover { border-color: #fff; color: #fff; background: rgba(40,120,140,.6); }
+body.offline #dlBtn { display: none; }
+@media (max-width: 700px) { .menu { gap: 14px; } .mgroup { min-width: 260px; } }
+#trainBox { position: absolute; left: 24px; top: 120px; width: min(360px, calc(100% - 48px)); display: none; background: rgba(8,6,18,.78); border-left: 4px solid var(--wind); padding: 12px 16px; z-index: 6; }
+#trainBox.show { display: block; } #trainBox small { font-size: 10px; letter-spacing: .3em; color: var(--wind); font-weight: 800; } #trainBox b#trTitle { display: block; font-size: 22px; letter-spacing: .12em; font-style: italic; margin: 2px 0 6px; }
+#trainBox p { margin: 0 0 8px; font-size: 14px; line-height: 1.45; } #trainBox p .ic { display: inline-flex; vertical-align: middle; }
+#trProg i { display: inline-block; width: 14px; height: 14px; margin-right: 6px; transform: rotate(45deg); border: 2px solid #000; background: rgba(255,255,255,.2); } #trProg i.on { background: var(--wind); box-shadow: 0 0 8px var(--wind); }
 .btn.alt { filter: hue-rotate(160deg) saturate(1.2); }
 .ovl { position: fixed; inset: 0; z-index: 35; display: none; align-items: center; justify-content: center; background: rgba(6,4,14,.82); padding: 16px; }
 .ovl.show { display: flex; }
@@ -318,6 +332,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
 <div id="popups"></div>
 <div id="hud">
   <div id="rounds"></div>
+  <div id="trainBox"><small id="trLes"></small><b id="trTitle"></b><p id="trText"></p><div id="trProg"></div></div>
   <div id="bossbar">
     <div class="bb-emblem"><svg id="bbEmb" viewBox="0 0 60 60"><path d="M30 3 L57 30 L30 57 L3 30 Z" fill="#1a0c0a" stroke="#ff7a2a" stroke-width="3"/><path d="M30 14 C38 24 40 30 36 38 C34 32 31 31 30 27 C28 33 22 35 24 42 C18 36 20 26 30 14 Z" fill="#ff8a30"/><path d="M30 30 C33 34 33 38 30 44 C27 38 27 34 30 30 Z" fill="#ffe08a"/></svg></div>
     <div class="bb-main">
@@ -359,20 +374,20 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
 <div id="title">
   <h1>GALEBORN</h1>
   <h2>DUEL ON THE SUNDERED SPIRE</h2>
-  <div class="modes"><button class="btn" id="playBtn">DUEL ONLINE</button><button class="btn" id="friendBtn">DUEL A FRIEND</button><button class="btn alt" id="botBtn">DUEL A BOT</button><button class="btn alt" id="soloBtn">SOLO · VARUKH</button><button class="btn small" id="lbBtn">LEADERBOARD</button></div>
-  <button class="btn small" id="settingsBtn">SETTINGS</button>
-  <div class="controls">
-    <div><b>Move</b><span class="ic" data-act="move"></span></div>
-    <div><b>Camera</b><span class="ic" data-act="camera"></span></div>
-    <div><b>Jump ×2</b><span class="ic" data-act="jump"></span></div>
-    <div><b>Dash / dodge</b><span class="ic" data-act="dash"></span></div>
-    <div><b>Strike combo</b><span class="ic" data-act="light"></span></div>
-    <div><b>Gale (hold)</b><span class="ic" data-act="heavy"></span></div>
-    <div><b>Ultimate</b><span class="ic" data-act="special"></span></div>
-    <div><b>Lock-on</b><span class="ic" data-act="lock"></span></div>
-    <div><b>Block (tap = parry)</b><span class="ic" data-act="block"></span></div>
+  <div class="menu">
+    <div class="mgroup"><div class="mlabel">DUEL</div>
+      <button class="btn" id="playBtn">ONLINE <small>RANKED</small></button>
+      <button class="btn" id="friendBtn">VS A FRIEND <small>ROOM CODE</small></button>
+      <button class="btn" id="botBtn">VS A BOT <small>EASY · NORMAL · HARD</small></button>
+    </div>
+    <div class="mgroup"><div class="mlabel">TRAIN</div>
+      <button class="btn alt" id="trainBtn">TRAINING ROOM <small>6 SHORT LESSONS</small></button>
+      <button class="btn alt" id="soloBtn">SOLO · VARUKH <small>BOSS FIGHT</small></button>
+    </div>
   </div>
-  <div class="tip">Dodge at the last instant to trigger a <b style="color:var(--wind)">Flow Step</b>: time slows and your next strike teleports you into a counter. Strike fireballs to send them back. Break his posture for big damage. H shows controls, M mutes.</div>
+  <div class="mbar">
+    <button class="mb" id="lbBtn">LEADERBOARD</button><button class="mb" id="settingsBtn">SETTINGS</button><button class="mb" id="ctrlBtn">CONTROLS</button><a class="mb" id="dlBtn" href="galeborn-offline.html" download="Galeborn.html" title="One file that runs offline in any browser (about 24 MB)">DOWNLOAD</a>
+  </div>
 </div>
 <div class="panel" id="pause"><h1>PAUSED</h1><h2 class="settingsTitle">SETTINGS</h2><div id="settings"></div><p class="hintline"><span class="ic" data-act="pause"></span> back</p></div>
 <div id="fps">60 FPS</div>
@@ -10803,6 +10818,110 @@ const Tempo = {
 
 'use strict';
 /* ============================================================
+   Training room: short playable lessons against a held-back Varukh.
+   ============================================================ */
+const Training = {
+  active: false, idx: 0, ev: {}, base: {}, atkT: 0, doneT: 0,
+  lessons() {
+    const I = a => `<span class="ic" data-act="${a}">${iconsFor(a, UIIcons.dev || 'kb')}</span>`;
+    const elemLine = { water: 'You are water: you deal +12% to him.', fire: 'Fire against fire: no edge either way.', wind: 'Wind is fed by fire, so he has the edge on you. Keep moving.', earth: 'Earth against fire: no edge either way.' }[Hero.id] || '';
+    return [
+      { title: 'PERFECT STRINGS', need: 3, text: `Press ${I('light')} again right as each blow connects. A gold <b>PERFECT</b> hits harder. Mashing early makes the string weaker and slower.`, count: () => (G.stats.perfects || 0) - (this.base.perfects || 0) },
+      { title: 'LAUNCH & CHASE', need: 1, text: `Hold <b>back</b> (away from him) + ${I('light')} to launch him, then ${I('dash')} right away to chase him into the air.`, count: () => this.ev.pursuit || 0 },
+      { title: 'BLOCK', need: 2, attacks: true, text: `He is going to charge you. Hold ${I('block')} to block. A block only covers your front and drains the guard bar under your health.`, count: () => this.ev.blocked || 0 },
+      { title: 'PARRY', need: 1, attacks: true, text: `Now <b>tap</b> ${I('block')} just before his hit lands. A parry staggers him: strike right after for a counter.`, count: () => this.ev.parried || 0 },
+      { title: 'BURST', need: 1, attacks: true, setup: p => { p.burst = 100; }, text: `Your <b>BURST</b> gauge is full. Let his charge catch you, then press ${I('block')} while you are hit to break free.`, count: () => (G.stats.bursts || 0) - (this.base.bursts || 0) },
+      { title: 'ELEMENTS', need: 1, text: `Water beats fire, fire beats wind, wind beats earth, earth beats water (+12% damage). Varukh is fire. ${elemLine} Hold ${I('heavy')} to charge your heavy and hit him with it.`, count: () => this.ev.heavy || 0 },
+    ];
+  },
+  install() {
+    if (this.installed) return; this.installed = true;
+    const oc = Guard.check;
+    Guard.check = function (...args) { const r = oc.apply(this, args); if (Training.active && r) Training.ev[r] = (Training.ev[r] || 0) + 1; return r; };
+    const b = G.realBoss || G.boss, ot = b.takeDamage.bind(b);
+    b.takeDamage = function (dmg, post, point, dir, o = {}) { const r = ot(dmg, post, point, dir, o); if (Training.active && r && ['lance', 'firebolt', 'boulder', 'jet'].includes(o.src)) Training.ev.heavy = (Training.ev.heavy || 0) + 1; return r; };
+  },
+  start() {
+    this.install();
+    G.mode = 'training'; this.active = true; this.idx = -1;
+    G.reset();
+    $('title').classList.add('hide'); $('hud').classList.add('show');
+    document.querySelector('#bossbar .bn').textContent = 'VARUKH';
+    document.querySelector('#bossbar small').textContent = 'TRAINING ROOM';
+    const b = G.boss, p = G.player; b.pos.set(0, 0, -3); p.pos.set(0, 0, 4); p.yaw = Math.PI;
+    Sfx.init();
+    G.beginFight(true);
+    $('trainBox').classList.add('show');
+    this.next();
+  },
+  next() {
+    this.idx++;
+    const L = this.lessons();
+    if (this.idx >= L.length) return this.finish();
+    this.ev = {}; this.base = { perfects: G.stats.perfects || 0, bursts: G.stats.bursts || 0 };
+    const l = L[this.idx]; this.atkT = 1.8; this.doneT = 0;
+    if (l.setup) l.setup(G.player);
+    $('trLes').textContent = `LESSON ${this.idx + 1} / ${L.length}`;
+    $('trTitle').textContent = l.title; $('trText').innerHTML = l.text;
+    this.render(0, l.need);
+    HUD.banner(l.title, 'flow');
+  },
+  render(n, need) { $('trProg').innerHTML = Array.from({ length: need }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join(''); },
+  update(dt) {
+    if (!this.active || G.state !== 'fight') return;
+    const b = G.boss, p = G.player;
+    // nobody dies in here
+    if (p.hp < p.maxHp * 0.5) p.hp = p.maxHp;
+    if (b.hp < b.maxHp * 0.6) b.hp = b.maxHp;
+    b.pendingPhase = false;
+    if (p.state === 'pursuit') this.ev.pursuit = 1;
+    const L = this.lessons(), l = L[this.idx]; if (!l) return;
+    // he only attacks when the lesson needs it, with room to react
+    if (b.state !== 'attack') b.cool = 999;
+    if (l.attacks && this.doneT <= 0) {
+      if (b.state === 'idle') { this.atkT -= dt; if (this.atkT <= 0) { this.atkT = 2.8; this.forceRush(); } }
+      if (l.title === 'BURST' && p.burst < 100 && !Burst.can(p) && p.state === 'move') p.burst = 100;
+    }
+    const n = Math.min(l.need, l.count());
+    if (n !== this.lastN) { this.lastN = n; this.render(n, l.need); if (n > 0) Sfx.ting(1800 + n * 300); }
+    if (n >= l.need && this.doneT <= 0) {
+      this.doneT = 1.6; HUD.banner('CLEAR!', 'fight'); Sfx.P('sfx_flow_full', 0.8) || Sfx.ting(2600);
+      FX.burst(p.chest(), 40, { speed: 10, life: 0.6, s0: 0.35, c0: C.white, c1: C.wind });
+    }
+    if (this.doneT > 0) { this.doneT -= dt; if (this.doneT <= 0) { this.lastN = -1; this.next(); } }
+  },
+  forceRush() {
+    const b = G.boss;
+    b.atk = b.rush(); b.atk.name = 'rush'; b.last = 'rush';
+    b.state = 'attack'; b.at = 0; b.prevAt = -1;
+    Sfx.bv && Sfx.bv('attack', 0.4, 2);
+  },
+  finish() {
+    try { localStorage.setItem('galeborn.trained', '1'); } catch (e) {}
+    HUD.banner('TRAINING COMPLETE', 'fight'); Sfx.victory && Sfx.victory();
+    $('trTitle').textContent = 'ALL LESSONS CLEAR'; $('trText').innerHTML = 'Take it online, or warm up against a bot.'; $('trProg').innerHTML = '';
+    $('trainBtn').classList.remove('new');
+    setTimeout(() => { if (this.active) G.toTitle(); }, 3200);
+  },
+  stop() {
+    if (!this.active) return;
+    this.active = false; G.mode = 'solo';
+    $('trainBox').classList.remove('show');
+    document.querySelector('#bossbar small').textContent = 'THE CINDER WARDEN';
+  },
+};
+
+/* back to the title screen from anywhere */
+G.toTitle = function () {
+  if (Duel.active) Duel.leave();
+  Training.stop();
+  G.reset(); G.state = 'title';
+  $('hud').classList.remove('show'); $('title').classList.remove('hide'); $('select').classList.remove('show'); $('endPanel').className = 'panel';
+  Input.unlock();
+};
+
+'use strict';
+/* ============================================================
    Hero select: browse the four fighters on the live 3D model
    ============================================================ */
 const Select = {
@@ -10851,7 +10970,7 @@ const Select = {
     if (!G.player.rig.model && HERO_B64()[Hero.id]) return;
     $('select').classList.remove('show');
     Sfx.ui(); Sfx.bigWhoosh();
-    if (this.mode === 'solo') G.startIntro(); else Lobby.open(this.mode);
+    if (this.mode === 'solo') G.startIntro(); else if (this.mode === 'training') Training.start(); else Lobby.open(this.mode);
   },
 };
 
@@ -11505,6 +11624,11 @@ const Lobby = {
     $('friendBtn').addEventListener('click', e => { e.stopPropagation(); Sfx.init(); Select.open('friend'); });
     $('botBtn').addEventListener('click', e => { e.stopPropagation(); Sfx.init(); Select.open('bot'); });
     $('soloBtn').addEventListener('click', e => { e.stopPropagation(); Sfx.init(); Select.open('solo'); });
+    $('trainBtn').addEventListener('click', e => { e.stopPropagation(); Sfx.init(); Select.open('training'); });
+    $('ctrlBtn').addEventListener('click', e => { e.stopPropagation(); Sfx.ui(); $('help').classList.toggle('show'); });
+    $('dlBtn').addEventListener('click', e => e.stopPropagation());
+    try { if (!localStorage.getItem('galeborn.trained')) $('trainBtn').classList.add('new'); } catch (e) {}
+    if (typeof ASSET_WEB === 'undefined' || !ASSET_WEB) document.body.classList.add('offline');
   },
   set(html) { $('lbBody').innerHTML = html; },
   status(t, err) { $('lbStatus').textContent = t; $('lbStatus').classList.toggle('err', !!err); },
@@ -11706,8 +11830,9 @@ const Menu = {
       { key: 'master', label: 'Master volume', type: 'range', min: 0, max: 1, step: 0.05, fmt: pct },
       { key: 'music', label: 'Music volume', type: 'range', min: 0, max: 1, step: 0.05, fmt: pct },
       { key: 'resume', label: 'Resume', type: 'button', act: () => G.togglePause(false) },
-      { key: 'restart', label: 'Restart fight', type: 'button', act: () => { G.togglePause(false); G.startIntro(); } },
+      { key: 'restart', label: 'Restart fight', type: 'button', act: () => { G.togglePause(false); if (Training.active) { Training.stop(); Training.start(); } else G.startIntro(); } },
       { key: 'controls', label: 'Show controls', type: 'button', act: () => $('help').classList.toggle('show') },
+      { key: 'quit', label: 'Quit to main menu', type: 'button', act: () => { G.togglePause(false); G.toTitle(); } },
     ];
     const box = $('settings');
     box.innerHTML = this.rows.map((r, i) => `<div class="srow ${r.type}" data-i="${i}"><span class="sl">${r.label}</span>${r.type === 'button' ? '' : `<span class="sv"><button class="sa" data-d="-1">◀</button><b></b><button class="sa" data-d="1">▶</button></span>`}</div>`).join('');
@@ -12118,6 +12243,7 @@ G.onVictory = function () {
 };
 G.onDefeat = function (why) {
   if (Duel.active) return Duel.finish(false, why);
+  if (Training.active) { const p = G.player; p.alive = true; p.hp = p.maxHp; p.toMove(); p.invuln = 1; return; }
   G.state = 'ending'; G.won = false;
   slowmo(0.25, 1.2);
   Render.post.flash = 0.3; Sfx.intensity = 0; Sfx.defeat();
@@ -12325,7 +12451,7 @@ function main() {
       else { Duel.mirror = Duel.active; G.player.update(pdt, a); Duel.mirror = false; G.boss.update(Duel.active ? sim : bdt); }
       Duel.tick(raw);
       for (const p of G.proj) { p.update(p.owner === 'boss' ? bdt : pdt, Render.camera); if (!p.dead && p.owner === 'boss') Graze.check(p, G.player); }
-      ProjClash.update(); Arena.update(pdt); Tempo.update(pdt);
+      ProjClash.update(); Arena.update(pdt); Tempo.update(pdt); Training.update(pdt);
       for (let i = G.proj.length - 1; i >= 0; i--) if (G.proj[i].dead) G.proj.splice(i, 1);
       // wind cancels fire: player projectiles destroy fireballs
       for (const p of G.proj) if (p.owner === 'player' && !p.dead && p.kind !== 'fireball') for (const q of G.proj) if (q.owner === 'boss' && !q.dead && p.pos.distanceTo(q.pos) < p.r + q.r) { q.explode(); Sfx.deflect(); G.player.gainFlow(4); }
@@ -12368,5 +12494,5 @@ window.addEventListener('load', () => {
 });
 
 </script>
-<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1115-2221</div></body>
+<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1115-2243</div></body>
 </html>

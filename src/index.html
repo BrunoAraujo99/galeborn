@@ -101,8 +101,22 @@ body.duel #endPanel .rhint { display: none; }
 #heat s { background: rgba(255,255,255,.15); box-shadow: none; }
 .dnum.burn span { font-size: 22px; color: #ffcf60; }
 .popup.heal, .tag.heal { color: #7fffb0; }
-.modes { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.modes .btn { min-width: 300px; }
+.menu { display: flex; gap: 34px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+.mgroup { display: flex; flex-direction: column; gap: 10px; align-items: stretch; min-width: 300px; }
+.mlabel { font-weight: 900; letter-spacing: .5em; font-size: 12px; color: var(--wind); text-align: left; padding-left: 8px; text-shadow: 2px 2px 0 var(--ink); }
+.mgroup .btn { display: flex; flex-direction: column; align-items: flex-start; padding: 10px 28px; font-size: 19px; text-align: left; }
+.mgroup .btn small { font-size: 10px; letter-spacing: .3em; opacity: .75; font-weight: 700; margin-top: 2px; }
+.btn.new::after { content: 'NEW'; position: absolute; right: -10px; top: -10px; background: #ffcc40; color: #1a1020; font-size: 10px; letter-spacing: .15em; padding: 2px 6px; border: 2px solid #000; }
+.mgroup .btn { position: relative; }
+.mbar { margin-top: 26px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.mb { font: inherit; font-size: 12px; font-weight: 800; letter-spacing: .22em; padding: 8px 16px; color: #dfe9ff; background: rgba(10,8,20,.6); border: 2px solid rgba(255,255,255,.35); cursor: pointer; text-decoration: none; transform: skewX(-12deg); }
+.mb:hover { border-color: #fff; color: #fff; background: rgba(40,120,140,.6); }
+body.offline #dlBtn { display: none; }
+@media (max-width: 700px) { .menu { gap: 14px; } .mgroup { min-width: 260px; } }
+#trainBox { position: absolute; left: 24px; top: 120px; width: min(360px, calc(100% - 48px)); display: none; background: rgba(8,6,18,.78); border-left: 4px solid var(--wind); padding: 12px 16px; z-index: 6; }
+#trainBox.show { display: block; } #trainBox small { font-size: 10px; letter-spacing: .3em; color: var(--wind); font-weight: 800; } #trainBox b#trTitle { display: block; font-size: 22px; letter-spacing: .12em; font-style: italic; margin: 2px 0 6px; }
+#trainBox p { margin: 0 0 8px; font-size: 14px; line-height: 1.45; } #trainBox p .ic { display: inline-flex; vertical-align: middle; }
+#trProg i { display: inline-block; width: 14px; height: 14px; margin-right: 6px; transform: rotate(45deg); border: 2px solid #000; background: rgba(255,255,255,.2); } #trProg i.on { background: var(--wind); box-shadow: 0 0 8px var(--wind); }
 .btn.alt { filter: hue-rotate(160deg) saturate(1.2); }
 .ovl { position: fixed; inset: 0; z-index: 35; display: none; align-items: center; justify-content: center; background: rgba(6,4,14,.82); padding: 16px; }
 .ovl.show { display: flex; }
@@ -318,6 +332,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
 <div id="popups"></div>
 <div id="hud">
   <div id="rounds"></div>
+  <div id="trainBox"><small id="trLes"></small><b id="trTitle"></b><p id="trText"></p><div id="trProg"></div></div>
   <div id="bossbar">
     <div class="bb-emblem"><svg id="bbEmb" viewBox="0 0 60 60"><path d="M30 3 L57 30 L30 57 L3 30 Z" fill="#1a0c0a" stroke="#ff7a2a" stroke-width="3"/><path d="M30 14 C38 24 40 30 36 38 C34 32 31 31 30 27 C28 33 22 35 24 42 C18 36 20 26 30 14 Z" fill="#ff8a30"/><path d="M30 30 C33 34 33 38 30 44 C27 38 27 34 30 30 Z" fill="#ffe08a"/></svg></div>
     <div class="bb-main">
@@ -359,20 +374,20 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
 <div id="title">
   <h1>GALEBORN</h1>
   <h2>DUEL ON THE SUNDERED SPIRE</h2>
-  <div class="modes"><button class="btn" id="playBtn">DUEL ONLINE</button><button class="btn" id="friendBtn">DUEL A FRIEND</button><button class="btn alt" id="botBtn">DUEL A BOT</button><button class="btn alt" id="soloBtn">SOLO · VARUKH</button><button class="btn small" id="lbBtn">LEADERBOARD</button></div>
-  <button class="btn small" id="settingsBtn">SETTINGS</button>
-  <div class="controls">
-    <div><b>Move</b><span class="ic" data-act="move"></span></div>
-    <div><b>Camera</b><span class="ic" data-act="camera"></span></div>
-    <div><b>Jump ×2</b><span class="ic" data-act="jump"></span></div>
-    <div><b>Dash / dodge</b><span class="ic" data-act="dash"></span></div>
-    <div><b>Strike combo</b><span class="ic" data-act="light"></span></div>
-    <div><b>Gale (hold)</b><span class="ic" data-act="heavy"></span></div>
-    <div><b>Ultimate</b><span class="ic" data-act="special"></span></div>
-    <div><b>Lock-on</b><span class="ic" data-act="lock"></span></div>
-    <div><b>Block (tap = parry)</b><span class="ic" data-act="block"></span></div>
+  <div class="menu">
+    <div class="mgroup"><div class="mlabel">DUEL</div>
+      <button class="btn" id="playBtn">ONLINE <small>RANKED</small></button>
+      <button class="btn" id="friendBtn">VS A FRIEND <small>ROOM CODE</small></button>
+      <button class="btn" id="botBtn">VS A BOT <small>EASY · NORMAL · HARD</small></button>
+    </div>
+    <div class="mgroup"><div class="mlabel">TRAIN</div>
+      <button class="btn alt" id="trainBtn">TRAINING ROOM <small>6 SHORT LESSONS</small></button>
+      <button class="btn alt" id="soloBtn">SOLO · VARUKH <small>BOSS FIGHT</small></button>
+    </div>
   </div>
-  <div class="tip">Dodge at the last instant to trigger a <b style="color:var(--wind)">Flow Step</b>: time slows and your next strike teleports you into a counter. Strike fireballs to send them back. Break his posture for big damage. H shows controls, M mutes.</div>
+  <div class="mbar">
+    <button class="mb" id="lbBtn">LEADERBOARD</button><button class="mb" id="settingsBtn">SETTINGS</button><button class="mb" id="ctrlBtn">CONTROLS</button><a class="mb" id="dlBtn" href="galeborn-offline.html" download="Galeborn.html" title="One file that runs offline in any browser (about 24 MB)">DOWNLOAD</a>
+  </div>
 </div>
 <div class="panel" id="pause"><h1>PAUSED</h1><h2 class="settingsTitle">SETTINGS</h2><div id="settings"></div><p class="hintline"><span class="ic" data-act="pause"></span> back</p></div>
 <div id="fps">60 FPS</div>

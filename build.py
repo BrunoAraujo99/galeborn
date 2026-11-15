@@ -1,5 +1,5 @@
 import sys, base64, os, glob, json, shutil, datetime
-order=['core','audio','fx','heroes','rig','heromodel','world','combat','player','boss','ui','anime','moments','spectacle','kits','movesets','depth','arena','tempo','select','net','duel','bot','lobby','settings','perf','main']
+order=['core','audio','fx','heroes','rig','heromodel','world','combat','player','boss','ui','anime','moments','spectacle','kits','movesets','depth','arena','tempo','training','select','net','duel','bot','lobby','settings','perf','main']
 game='\n'.join(open(f'src/{n}.js').read() for n in order)
 libs=open('src/three.min.js').read()+'\n'+open('src/gltfloader.js').read()+'\n'+open('src/vendor/supabase.js').read()
 HEROES=['wind','fire','earth','water']
@@ -28,4 +28,5 @@ for h in HEROES: shutil.copy(f'assets/heroes/{h}.glb',f'{web}/heroes/{h}.glb')
 for f in audio: shutil.copy(f,f'{web}/audio/')
 w=page('\nconst ASSET_WEB=true;\nconst AUDIO_LIST='+json.dumps([os.path.splitext(os.path.basename(f))[0] for f in audio])+';\n')
 open(web+'/index.html','w').write(w)
+shutil.copy('dist/galeborn.html',web+'/galeborn-offline.html')
 print('web page',len(w))

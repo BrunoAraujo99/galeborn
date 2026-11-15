@@ -15,6 +15,11 @@ const Lobby = {
     $('friendBtn').addEventListener('click', e => { e.stopPropagation(); Sfx.init(); Select.open('friend'); });
     $('botBtn').addEventListener('click', e => { e.stopPropagation(); Sfx.init(); Select.open('bot'); });
     $('soloBtn').addEventListener('click', e => { e.stopPropagation(); Sfx.init(); Select.open('solo'); });
+    $('trainBtn').addEventListener('click', e => { e.stopPropagation(); Sfx.init(); Select.open('training'); });
+    $('ctrlBtn').addEventListener('click', e => { e.stopPropagation(); Sfx.ui(); $('help').classList.toggle('show'); });
+    $('dlBtn').addEventListener('click', e => e.stopPropagation());
+    try { if (!localStorage.getItem('galeborn.trained')) $('trainBtn').classList.add('new'); } catch (e) {}
+    if (typeof ASSET_WEB === 'undefined' || !ASSET_WEB) document.body.classList.add('offline');
   },
   set(html) { $('lbBody').innerHTML = html; },
   status(t, err) { $('lbStatus').textContent = t; $('lbStatus').classList.toggle('err', !!err); },

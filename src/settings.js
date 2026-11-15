@@ -88,8 +88,9 @@ const Menu = {
       { key: 'master', label: 'Master volume', type: 'range', min: 0, max: 1, step: 0.05, fmt: pct },
       { key: 'music', label: 'Music volume', type: 'range', min: 0, max: 1, step: 0.05, fmt: pct },
       { key: 'resume', label: 'Resume', type: 'button', act: () => G.togglePause(false) },
-      { key: 'restart', label: 'Restart fight', type: 'button', act: () => { G.togglePause(false); G.startIntro(); } },
+      { key: 'restart', label: 'Restart fight', type: 'button', act: () => { G.togglePause(false); if (Training.active) { Training.stop(); Training.start(); } else G.startIntro(); } },
       { key: 'controls', label: 'Show controls', type: 'button', act: () => $('help').classList.toggle('show') },
+      { key: 'quit', label: 'Quit to main menu', type: 'button', act: () => { G.togglePause(false); G.toTitle(); } },
     ];
     const box = $('settings');
     box.innerHTML = this.rows.map((r, i) => `<div class="srow ${r.type}" data-i="${i}"><span class="sl">${r.label}</span>${r.type === 'button' ? '' : `<span class="sv"><button class="sa" data-d="-1">◀</button><b></b><button class="sa" data-d="1">▶</button></span>`}</div>`).join('');
