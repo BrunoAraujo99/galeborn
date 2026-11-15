@@ -34,7 +34,7 @@ const Select = {
     const st = d.stats, bar = (v, max) => `<i style="width:${Math.round(clamp(v / max, 0.1, 1) * 100)}%"></i>`;
     $('selInfo').style.setProperty('--hc', d.css); $('selInfo').style.setProperty('--hc2', d.css2);
     $('selInfo').innerHTML = `<div class="sn">${d.name}</div><div class="st">${d.title}</div><p>${d.blurb}</p>
-      <div class="ss"><span>VITALITY</span><em>${bar(st.hp, 125)}</em><span>POWER</span><em>${bar(st.dmg, 1.15)}</em><span>SPEED</span><em>${bar(st.speed, 1.05)}</em></div>
+      <div class="ss"><span>VITALITY</span><em>${bar(st.hp, 115)}</em><span>POWER</span><em>${bar(st.dmg, 1.15)}</em><span>SPEED</span><em>${bar(st.speed, 1.05)}</em></div>
       <div class="sg">${d.sig}</div><div class="su">ULTIMATE · ${d.ult.name}</div>`;
   },
   nav(a) {

@@ -12,6 +12,7 @@ const Perf = {
     for (const d of World.dpillars) addTree(d.group);
     for (const d of World.dpillars) this.unmergePillar(d);
     for (const f of World.floaters || []) addTree(f);
+    if (World.temple) addTree(World.temple);
     if (G.boss) addTree(G.boss.rig.root);
     if (G.player) addTree(G.player.rig.root);
     this.snap = [];
@@ -30,6 +31,7 @@ const Perf = {
     this.anch = [];
     const anchors = [];
     for (const f of World.floaters || []) anchors.push([f, true]);
+    if (World.temple) anchors.push([World.temple, true]);
     if (G.boss) for (const k in G.boss.rig.j) anchors.push([G.boss.rig.j[k], false]);
     const aset = new Set(anchors.map(a => a[0]));
     for (const [A, vcOK] of anchors) {

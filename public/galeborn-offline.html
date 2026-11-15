@@ -5284,6 +5284,11 @@ const Render = {
   },
   render(time) {
     const r = this.r;
+    // medium/low: refresh the shadow map at half rate (fighters' shadows still track, scenery never moves)
+    this.frameN = (this.frameN || 0) + 1;
+    const q = typeof Settings !== 'undefined' ? Quality.level : 'high';
+    r.shadowMap.autoUpdate = !(q === 'medium' || q === 'low');
+    if (!r.shadowMap.autoUpdate) r.shadowMap.needsUpdate = (this.frameN & 1) === 0;
     r.setRenderTarget(this.rtScene);
     r.render(this.scene, this.camera);
     // bloom chain
@@ -6368,7 +6373,7 @@ const HEROES = {
     ult: { name: 'TITAN\'S SPIRES', sub: 'DEEP ROOT ARTS · MOUNTAIN WAKES', tag: 'TITAN' },
     lines: { ult: ['Mountains, rise!', 'The earth remembers!', 'Stand on this, if you can!'], intro: ['Mountains don\'t burn.', 'I have stood longer than your fire has lived.'], low: 'Stone... doesn\'t break...', awaken: 'I am the mountain now.', win: 'Rooted. Unbroken.' },
     taunt: ['Stone melts, little mountain.', 'I will glass this rock.', 'Even mountains bleed magma.'],
-    stats: { hp: 125, speed: 0.9, dmg: 1.15 },
+    stats: { hp: 115, speed: 0.9, dmg: 1.15 },
     blurb: 'Heavy and unstoppable. Armored big hits, slams raise stone spikes.',
     sig: 'STONESKIN · big attacks have super armor, slams erupt spikes',
   },
@@ -6380,7 +6385,7 @@ const HEROES = {
     ult: { name: 'TIDAL CATACLYSM', sub: 'MOONTIDE ARTS · THE DEEP RISES', tag: 'TIDAL' },
     lines: { ult: ['Drown, Warden!', 'The tide answers me!', 'Even fire fears the deep!'], intro: ['Water always wins. Patience.', 'Every fire meets its tide.'], low: 'Flow... keep flowing...', awaken: 'The whole ocean moves with me.', win: 'The tide returns. The fire doesn\'t.' },
     taunt: ['Water boils, little tide.', 'I will steam you from this sky.', 'Your tide breaks on my shore of ash.'],
-    stats: { hp: 100, speed: 1.05, dmg: 0.95 },
+    stats: { hp: 100, speed: 1.05, dmg: 1 },
     blurb: 'Fluid and sustaining. Hits heal you; dodges leave healing pools.',
     sig: 'UNDERTOW · hits heal you, perfect dodges restore more',
   },
@@ -10617,10 +10622,10 @@ const MOVESETS = {
   // Ysra: long-reach water whips, a spinning wheel, and an undertow that drags them in
   water: {
     light: [
-      { w: 'whipW', s: 'whipR', dur: 0.34, a0: 0.08, a1: 0.16, dmg: 9, post: 4, reach: 2.3, r: 1.2, lunge: 5, cancel: 0.19, slash: { tilt: 0.1, y: 1.25 }, trail: 'R', pitch: 1.1, elem: 'splash' },
-      { w: 'whipR', s: 'whipL', dur: 0.36, a0: 0.08, a1: 0.17, dmg: 10, post: 4, reach: 2.3, r: 1.2, lunge: 5, cancel: 0.2, slash: { tilt: -0.1, y: 1.15, flip: true }, trail: 'L', pitch: 1.05, elem: 'splash' },
-      { w: 'wheel', s: 'wheel', dur: 0.46, a0: 0.1, a1: 0.26, dmg: 11, post: 5, reach: 0.2, r: 0.4, lunge: 4, cancel: 0.28, aoe: 2.6, spinY: true, spinTurns: 1, trail: 'B', pitch: 1.0, elem: 'ring' },
-      { w: 'pullW', s: 'pull', dur: 0.62, a0: 0.14, a1: 0.24, dmg: 17, post: 12, reach: 2.6, r: 1.5, lunge: 3, cancel: 0.42, big: true, finisher: true, pull: 7, slash: { tilt: 1.4, y: 1.2 }, trail: 'B', pitch: 0.85, elem: 'surge' },
+      { w: 'whipW', s: 'whipR', dur: 0.34, a0: 0.08, a1: 0.16, dmg: 10, post: 4, reach: 2.3, r: 1.2, lunge: 5, cancel: 0.19, slash: { tilt: 0.1, y: 1.25 }, trail: 'R', pitch: 1.1, elem: 'splash' },
+      { w: 'whipR', s: 'whipL', dur: 0.36, a0: 0.08, a1: 0.17, dmg: 11, post: 4, reach: 2.3, r: 1.2, lunge: 5, cancel: 0.2, slash: { tilt: -0.1, y: 1.15, flip: true }, trail: 'L', pitch: 1.05, elem: 'splash' },
+      { w: 'wheel', s: 'wheel', dur: 0.46, a0: 0.1, a1: 0.26, dmg: 12, post: 5, reach: 0.2, r: 0.4, lunge: 4, cancel: 0.28, aoe: 2.6, spinY: true, spinTurns: 1, trail: 'B', pitch: 1.0, elem: 'ring' },
+      { w: 'pullW', s: 'pull', dur: 0.62, a0: 0.14, a1: 0.24, dmg: 18, post: 12, reach: 2.6, r: 1.5, lunge: 3, cancel: 0.42, big: true, finisher: true, pull: 7, slash: { tilt: 1.4, y: 1.2 }, trail: 'B', pitch: 0.85, elem: 'surge' },
     ],
     air: [
       { w: 'jump', s: 'whipR', dur: 0.32, a0: 0.07, a1: 0.15, dmg: 9, post: 4, reach: 2.1, r: 1.3, lunge: 4, cancel: 0.17, trail: 'R', pitch: 1.1, elem: 'splash' },
@@ -11360,7 +11365,7 @@ const Select = {
     const st = d.stats, bar = (v, max) => `<i style="width:${Math.round(clamp(v / max, 0.1, 1) * 100)}%"></i>`;
     $('selInfo').style.setProperty('--hc', d.css); $('selInfo').style.setProperty('--hc2', d.css2);
     $('selInfo').innerHTML = `<div class="sn">${d.name}</div><div class="st">${d.title}</div><p>${d.blurb}</p>
-      <div class="ss"><span>VITALITY</span><em>${bar(st.hp, 125)}</em><span>POWER</span><em>${bar(st.dmg, 1.15)}</em><span>SPEED</span><em>${bar(st.speed, 1.05)}</em></div>
+      <div class="ss"><span>VITALITY</span><em>${bar(st.hp, 115)}</em><span>POWER</span><em>${bar(st.dmg, 1.15)}</em><span>SPEED</span><em>${bar(st.speed, 1.05)}</em></div>
       <div class="sg">${d.sig}</div><div class="su">ULTIMATE · ${d.ult.name}</div>`;
   },
   nav(a) {
@@ -12299,6 +12304,7 @@ const Perf = {
     for (const d of World.dpillars) addTree(d.group);
     for (const d of World.dpillars) this.unmergePillar(d);
     for (const f of World.floaters || []) addTree(f);
+    if (World.temple) addTree(World.temple);
     if (G.boss) addTree(G.boss.rig.root);
     if (G.player) addTree(G.player.rig.root);
     this.snap = [];
@@ -12317,6 +12323,7 @@ const Perf = {
     this.anch = [];
     const anchors = [];
     for (const f of World.floaters || []) anchors.push([f, true]);
+    if (World.temple) anchors.push([World.temple, true]);
     if (G.boss) for (const k in G.boss.rig.j) anchors.push([G.boss.rig.j[k], false]);
     const aset = new Set(anchors.map(a => a[0]));
     for (const [A, vcOK] of anchors) {
@@ -12911,5 +12918,5 @@ window.addEventListener('load', () => {
 });
 
 </script>
-<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1115-2321</div></body>
+<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1115-2336</div></body>
 </html>

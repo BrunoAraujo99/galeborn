@@ -198,6 +198,11 @@ const Render = {
   },
   render(time) {
     const r = this.r;
+    // medium/low: refresh the shadow map at half rate (fighters' shadows still track, scenery never moves)
+    this.frameN = (this.frameN || 0) + 1;
+    const q = typeof Settings !== 'undefined' ? Quality.level : 'high';
+    r.shadowMap.autoUpdate = !(q === 'medium' || q === 'low');
+    if (!r.shadowMap.autoUpdate) r.shadowMap.needsUpdate = (this.frameN & 1) === 0;
     r.setRenderTarget(this.rtScene);
     r.render(this.scene, this.camera);
     // bloom chain

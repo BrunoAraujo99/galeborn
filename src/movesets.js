@@ -91,10 +91,10 @@ const MOVESETS = {
   // Ysra: long-reach water whips, a spinning wheel, and an undertow that drags them in
   water: {
     light: [
-      { w: 'whipW', s: 'whipR', dur: 0.34, a0: 0.08, a1: 0.16, dmg: 9, post: 4, reach: 2.3, r: 1.2, lunge: 5, cancel: 0.19, slash: { tilt: 0.1, y: 1.25 }, trail: 'R', pitch: 1.1, elem: 'splash' },
-      { w: 'whipR', s: 'whipL', dur: 0.36, a0: 0.08, a1: 0.17, dmg: 10, post: 4, reach: 2.3, r: 1.2, lunge: 5, cancel: 0.2, slash: { tilt: -0.1, y: 1.15, flip: true }, trail: 'L', pitch: 1.05, elem: 'splash' },
-      { w: 'wheel', s: 'wheel', dur: 0.46, a0: 0.1, a1: 0.26, dmg: 11, post: 5, reach: 0.2, r: 0.4, lunge: 4, cancel: 0.28, aoe: 2.6, spinY: true, spinTurns: 1, trail: 'B', pitch: 1.0, elem: 'ring' },
-      { w: 'pullW', s: 'pull', dur: 0.62, a0: 0.14, a1: 0.24, dmg: 17, post: 12, reach: 2.6, r: 1.5, lunge: 3, cancel: 0.42, big: true, finisher: true, pull: 7, slash: { tilt: 1.4, y: 1.2 }, trail: 'B', pitch: 0.85, elem: 'surge' },
+      { w: 'whipW', s: 'whipR', dur: 0.34, a0: 0.08, a1: 0.16, dmg: 10, post: 4, reach: 2.3, r: 1.2, lunge: 5, cancel: 0.19, slash: { tilt: 0.1, y: 1.25 }, trail: 'R', pitch: 1.1, elem: 'splash' },
+      { w: 'whipR', s: 'whipL', dur: 0.36, a0: 0.08, a1: 0.17, dmg: 11, post: 4, reach: 2.3, r: 1.2, lunge: 5, cancel: 0.2, slash: { tilt: -0.1, y: 1.15, flip: true }, trail: 'L', pitch: 1.05, elem: 'splash' },
+      { w: 'wheel', s: 'wheel', dur: 0.46, a0: 0.1, a1: 0.26, dmg: 12, post: 5, reach: 0.2, r: 0.4, lunge: 4, cancel: 0.28, aoe: 2.6, spinY: true, spinTurns: 1, trail: 'B', pitch: 1.0, elem: 'ring' },
+      { w: 'pullW', s: 'pull', dur: 0.62, a0: 0.14, a1: 0.24, dmg: 18, post: 12, reach: 2.6, r: 1.5, lunge: 3, cancel: 0.42, big: true, finisher: true, pull: 7, slash: { tilt: 1.4, y: 1.2 }, trail: 'B', pitch: 0.85, elem: 'surge' },
     ],
     air: [
       { w: 'jump', s: 'whipR', dur: 0.32, a0: 0.07, a1: 0.15, dmg: 9, post: 4, reach: 2.1, r: 1.3, lunge: 4, cancel: 0.17, trail: 'R', pitch: 1.1, elem: 'splash' },
