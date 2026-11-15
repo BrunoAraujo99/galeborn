@@ -122,7 +122,7 @@ const Duel = {
     this.install();
     this.match = match; this.active = true; this.started = false; this.ended = false; this.reported = false;
     this.gotHello = false; this.helloT = 0; this.sendT = 0; this.cdT = -1; this.lastRx = performance.now();
-    this.round = 1; this.wins = [0, 0]; this.matchDone = false; this.rmMe = false; this.rmOpp = false;
+    this.gotCos = false; this.round = 1; this.wins = [0, 0]; this.matchDone = false; this.rmMe = false; this.rmOpp = false;
     G.mode = 'duel';
     const odef = HEROES[match.opp.hero] || HEROES.wind;
     if (!G.realBoss) G.realBoss = G.boss;
@@ -155,7 +155,8 @@ const Duel = {
     this.lastRx = performance.now();
     const p = G.player;
     switch (m.t) {
-      case 'h': if (!this.gotHello) { this.gotHello = true; this.send({ t: 'h' }); } break;
+      case 'h': if (!this.gotHello) { this.gotHello = true; this.send(Object.assign({ t: 'h' }, Progress.hello())); } if (!this.gotCos) { this.gotCos = true; Progress.applyOpp(m); } break;
+      case 'fin': FinisherFX.play(m.f, p.chest()); break;
       case 's': Opp.puppet.push(m); break;
       case 'hit': {
         if (!this.started || this.ended || !p.alive) return;
@@ -212,7 +213,7 @@ const Duel = {
     const p = G.player;
     if (!this.started) {
       this.helloT -= raw;
-      if (this.helloT <= 0 && this.link && this.link.status === 'open') { this.helloT = 0.5; this.send({ t: 'h' }); }
+      if (this.helloT <= 0 && this.link && this.link.status === 'open') { this.helloT = 0.5; this.send(Object.assign({ t: 'h' }, Progress.hello())); }
       if (this.gotHello && this.cdT < 0) { this.cdT = 3; HUD.banner('3', 'flow'); Sfx.P('sfx_vs', 0.8); Sfx.stinger('stinger_intro_vs'); }
       if (this.cdT >= 0) {
         const before = Math.ceil(this.cdT); this.cdT -= raw; const after = Math.ceil(this.cdT);
@@ -281,6 +282,8 @@ const Duel = {
       return;
     }
     this.matchDone = true;
+    if (won) { const f = Progress.finOf(Hero.id); if (f) { setTimeout(() => FinisherFX.play(f, Opp.chest()), 250); this.send({ t: 'fin', f }); } }
+    this.xpRes = Progress.grant(this.match.kind === 'bot' ? 'bot' : 'online', won, { diff: Lobby.lastDiff });
     Sfx.intensity = 0; if (won) setTimeout(() => Sfx.victory(), 700); else Sfx.defeat();
     HUD.banner(won ? (why || 'K.O.') : 'DEFEAT', won ? 'fight' : 'flow');
     if (won) setTimeout(() => { if (G.player.alive) G.player.state = 'victory'; HUD.say(Hero.def.name, Hero.def.lines.win, 2.4); }, 900);
@@ -315,7 +318,7 @@ const Duel = {
     const r = this.result, m = this.match;
     const s = G.stats;
     let rate = m.kind === 'bot' ? `<div><span>Bot · ${m.opp.rating}</span><b>unranked</b></div>` : m.kind !== 'ranked' ? '<div><span>Friendly duel</span><b>unranked</b></div>' : r ? `<div><span>Rating</span><b>${(r.winner === Api.me?.id ? '+' : '−') + (r.delta || 0)}</b></div>` : '<div><span>Rating</span><b>…</b></div>';
-    $('endStats').innerHTML = rate + `<div><span>Rounds</span><b>${this.wins[0]} – ${this.wins[1]}</b></div><div><span>Time</span><b>${Math.round(s.time)}s</b></div><div><span>Best combo</span><b>${s.maxCombo}</b></div><div><span>Perfect dodges</span><b>${s.perfect}</b></div><div><span>Highlights</span><b>${s.moments || 0}</b></div>`;
+    $('endStats').innerHTML = rate + `<div><span>Rounds</span><b>${this.wins[0]} – ${this.wins[1]}</b></div><div><span>Time</span><b>${Math.round(s.time)}s</b></div><div><span>Best combo</span><b>${s.maxCombo}</b></div><div><span>Perfect dodges</span><b>${s.perfect}</b></div><div><span>Highlights</span><b>${s.moments || 0}</b></div>` + Progress.endHtml(this.xpRes);
   },
   place() {
     const side = this.match.side === 1 ? 1 : -1, p = G.player;

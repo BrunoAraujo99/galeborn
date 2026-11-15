@@ -80,6 +80,7 @@ const Training = {
   },
   finish() {
     try { localStorage.setItem('galeborn.trained', '1'); } catch (e) {}
+    const xr = Progress.grant('training', true); if (xr) HUD.prompt(`+${xr.gain} ${Hero.def.name} MASTERY XP` + (xr.up ? ' · LEVEL UP' : ''), null, 3);
     HUD.banner('TRAINING COMPLETE', 'fight'); Sfx.victory && Sfx.victory();
     $('trTitle').textContent = 'ALL LESSONS CLEAR'; $('trText').innerHTML = 'Take it online, or warm up against a bot.'; $('trProg').innerHTML = '';
     $('trainBtn').classList.remove('new');

@@ -150,6 +150,7 @@ G.flowStep = function () {
   if (!p.grounded) Moment.fire('SKY STEP', 'DODGED ON THIN AIR', null, null, 1);
 };
 G.onVictory = function () {
+  if (!Training.active) { const f = Progress.finOf(Hero.id); if (f) setTimeout(() => FinisherFX.play(f, G.boss.chest(new V3())), 250); }
   if (typeof directedFinisher === 'function') return directedFinisher();
   G.state = 'ending';
   slowmo(0.12, 1.8);
@@ -201,6 +202,7 @@ function showEnd(win) {
   $('endTitle').textContent = win ? 'VICTORY' : 'DEFEATED';
   $('endSub').textContent = win ? 'The Cinder Warden falls. The winds are yours.' : 'The embers swallow the sky… rise again.';
   $('endPanel').className = 'panel show ' + (win ? 'win' : 'lose');
+  const xr = Progress.grant('solo', win);
   const m = Math.floor(s.time / 60), sec = Math.floor(s.time % 60);
   $('endStats').innerHTML = `
     <div><span>Time</span><b>${m}:${String(sec).padStart(2, '0')}</b></div>
@@ -209,7 +211,7 @@ function showEnd(win) {
     <div><span>Deflects</span><b>${s.deflects}</b></div>
     <div><span>Posture breaks</span><b>${s.breaks}</b></div>
     <div><span>Damage taken</span><b>${Math.round(s.dmgTaken)}</b></div>
-    <div><span>Highlights</span><b>${s.moments || 0}</b></div><div><span>Grazes</span><b>${s.grazes || 0}</b></div>` + (win ? `<div class="rank"><span>Rank</span><b>${rank()}</b></div>` : '');
+    <div><span>Highlights</span><b>${s.moments || 0}</b></div><div><span>Grazes</span><b>${s.grazes || 0}</b></div>` + (win ? `<div class="rank"><span>Rank</span><b>${rank()}</b></div>` : '') + Progress.endHtml(xr);
 }
 G.reset = function () {
   for (const p of G.proj) p.explode(true);
@@ -274,6 +276,7 @@ G.setHero = function (id, cb) {
     if (old) { p.pos.copy(old.pos); p.yaw = old.yaw; }
     $('hud').dataset.hero = id;
     HUD.setHero && HUD.setHero();
+    if (!IS_BOT) Progress.applyLocal();
     if (cb) cb();
   });
 };
@@ -291,7 +294,7 @@ function main() {
   Input.init(Render.r.domElement);
   HUD.init();
   CutIn.init();
-  Menu.init(); Settings.apply(); Select.build(); if (!IS_BOT) Lobby.init(); SpeedLines.init();
+  Menu.init(); Settings.apply(); Select.build(); if (!IS_BOT) { Lobby.init(); Profile.init(); } SpeedLines.init();
   try { const h = localStorage.getItem('galeborn.hero'); if (HEROES[h]) Hero.apply(h); } catch (e) {}
   G.setHero(Hero.id);
   G.boss = new Boss();

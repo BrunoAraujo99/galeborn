@@ -72,6 +72,7 @@ class ModelDriver {
     if (map) { map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4; }
     const mat = toon(0xffffff, { map, side: THREE.DoubleSide });
     skin.material = mat;
+    rig.skinMat = mat; if (rig.tintHex) mat.color.setHex(rig.tintHex);
     skin.castShadow = true; skin.frustumCulled = false;
     const ol = new THREE.SkinnedMesh(skin.geometry, skinOutlineMat(0.008));
     ol.bind(skin.skeleton, skin.bindMatrix);

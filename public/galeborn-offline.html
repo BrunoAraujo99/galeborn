@@ -120,6 +120,18 @@ body.offline #dlBtn { display: none; }
 .btn.alt { filter: hue-rotate(160deg) saturate(1.2); }
 .ovl { position: fixed; inset: 0; z-index: 35; display: none; align-items: center; justify-content: center; background: rgba(6,4,14,.82); padding: 16px; }
 .ovl.show { display: flex; }
+.pbox { width: min(760px, 100%) !important; text-align: left !important; }
+.phead { margin-bottom: 14px; } .phead b { font-size: 26px; font-style: italic; letter-spacing: .08em; margin-right: 10px; } .phead em { color: var(--wind); font-style: normal; font-weight: 800; letter-spacing: .2em; font-size: 12px; }
+.phead div { margin-top: 4px; font-size: 14px; } .phead small, .cos small.nx, .dim { display: block; opacity: .7; font-size: 12px; margin-top: 4px; }
+.mgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; } @media (max-width: 640px) { .mgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.mcard { font: inherit; color: #fff; background: rgba(255,255,255,.05); border: 2px solid rgba(255,255,255,.15); padding: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.mcard.on { border-color: var(--wind); background: rgba(80,200,220,.12); } .mcard svg { width: 44px; height: 44px; } .mcard b { letter-spacing: .12em; font-size: 13px; } .mcard span { font-size: 12px; font-weight: 800; color: var(--wind); }
+.mcard i, .xpLine i { display: block; width: 100%; height: 5px; background: linear-gradient(90deg, var(--wind) var(--k), rgba(255,255,255,.15) var(--k)); margin: 3px 0; } .mcard small { font-size: 10px; opacity: .7; }
+.cos { margin: 14px 0; } .crow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; } .crow > span { width: 86px; font-size: 11px; font-weight: 900; letter-spacing: .2em; color: var(--wind); }
+.chip { font: inherit; font-size: 11px; font-weight: 800; letter-spacing: .12em; color: #fff; background: rgba(255,255,255,.06); border: 2px solid rgba(255,255,255,.18); padding: 5px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.chip.on { border-color: var(--wind); background: rgba(80,200,220,.2); } .chip.locked { opacity: .4; cursor: default; } .chip small { font-size: 9px; opacity: .8; } .chip .sw { width: 12px; height: 12px; display: inline-block; border: 1px solid #000; }
+.pbox h3 { font-size: 13px; letter-spacing: .3em; color: var(--wind); margin: 14px 0 6px; } table.hist { width: 100%; font-size: 13px; border-collapse: collapse; } .hist td { padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,.08); } .hist tr.w td:first-child { color: #7be08a; font-weight: 900; } .hist tr.l td:first-child { color: #ff6a5a; font-weight: 900; }
+.xpLine { grid-column: 1 / -1; margin-top: 8px; text-align: left; } .xpLine span { font-weight: 900; letter-spacing: .12em; font-size: 13px; } .xpLine b { float: right; color: var(--wind); } .xpLine em { color: #ffd84a; font-style: normal; } .xpLine small { display: block; color: #ffd84a; font-size: 11px; letter-spacing: .1em; margin-top: 2px; }
 .ovl .box { width: min(520px, 100%); max-height: 90vh; overflow: auto; background: rgba(14,12,26,.95); border-left: 5px solid var(--wind); padding: 22px 24px; text-align: center; }
 .ovl h2 { margin: 0 0 14px; font-style: italic; letter-spacing: .2em; color: var(--wind); }
 .lbRow { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; font-size: 13px; }
@@ -191,6 +203,7 @@ body.awake .portrait, body.awake #flowRingFg { filter: drop-shadow(0 0 8px #5ff0
 #endStats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 28px; margin: 10px 0 24px; min-width: min(420px, 100%); }
 #endStats div { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.15); padding: 4px 0; }
 #endStats span { opacity: 0.75; } #endStats b { color: var(--wind); }
+#endStats div.xpLine { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; grid-column: 1 / -1; border: none; } #endStats .xpLine span { opacity: 1; } #endStats .xpLine i, #endStats .xpLine small { flex-basis: 100%; }
 #endStats .rank { grid-column: 1 / -1; justify-content: center; gap: 20px; align-items: center; border: none; }
 #endStats .rank b { font-size: 64px; font-style: italic; color: #ffe080; text-shadow: 4px 4px 0 var(--ink), 0 0 20px #ffb020; }
 #pause { background: rgba(8,6,14,0.82); z-index: 40; }
@@ -370,6 +383,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
 <div id="select"><div id="selInfo"></div><div id="selBottom"><div id="selCards"></div><button class="btn" id="selGo">FIGHT</button><div class="selHint"><span class="ic" data-act="move"></span> choose · <span class="ic" data-act="light"></span> fight</div></div></div>
 <div id="heat"></div>
 <div id="lobby" class="ovl"><div class="box"><h2 id="lbTitle">DUEL</h2><div class="lbRow"><label>Name</label><input id="lbName" maxlength="16" autocomplete="off"><span id="lbMe"></span></div><p id="lbStatus"></p><div id="lbBody"></div><button class="btn small" id="lbClose">BACK</button></div></div>
+<div id="profile" class="ovl"><div class="box pbox"><div id="profBody"></div><button class="btn small" data-act="close">CLOSE</button></div></div>
 <div id="board" class="ovl"><div class="box"><h2>LEADERBOARD</h2><div id="boardBody"></div><button class="btn small" id="boardClose">CLOSE</button></div></div>
 <div id="title">
   <h1>GALEBORN</h1>
@@ -386,7 +400,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
     </div>
   </div>
   <div class="mbar">
-    <button class="mb" id="lbBtn">LEADERBOARD</button><button class="mb" id="settingsBtn">SETTINGS</button><button class="mb" id="ctrlBtn">CONTROLS</button><a class="mb" id="dlBtn" href="galeborn-offline.html" download="Galeborn.html" title="One file that runs offline in any browser (about 24 MB)">DOWNLOAD</a>
+    <button class="mb" id="profBtn">PROFILE</button><button class="mb" id="lbBtn">LEADERBOARD</button><button class="mb" id="settingsBtn">SETTINGS</button><button class="mb" id="ctrlBtn">CONTROLS</button><a class="mb" id="dlBtn" href="galeborn-offline.html" download="Galeborn.html" title="One file that runs offline in any browser (about 24 MB)">DOWNLOAD</a>
   </div>
 </div>
 <div class="panel" id="pause"><h1>PAUSED</h1><h2 class="settingsTitle">SETTINGS</h2><div id="settings"></div><p class="hintline"><span class="ic" data-act="pause"></span> back</p></div>
@@ -6784,6 +6798,7 @@ class ModelDriver {
     if (map) { map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4; }
     const mat = toon(0xffffff, { map, side: THREE.DoubleSide });
     skin.material = mat;
+    rig.skinMat = mat; if (rig.tintHex) mat.color.setHex(rig.tintHex);
     skin.castShadow = true; skin.frustumCulled = false;
     const ol = new THREE.SkinnedMesh(skin.geometry, skinOutlineMat(0.008));
     ol.bind(skin.skeleton, skin.bindMatrix);
@@ -10904,6 +10919,7 @@ const Training = {
   },
   finish() {
     try { localStorage.setItem('galeborn.trained', '1'); } catch (e) {}
+    const xr = Progress.grant('training', true); if (xr) HUD.prompt(`+${xr.gain} ${Hero.def.name} MASTERY XP` + (xr.up ? ' · LEVEL UP' : ''), null, 3);
     HUD.banner('TRAINING COMPLETE', 'fight'); Sfx.victory && Sfx.victory();
     $('trTitle').textContent = 'ALL LESSONS CLEAR'; $('trText').innerHTML = 'Take it online, or warm up against a bot.'; $('trProg').innerHTML = '';
     $('trainBtn').classList.remove('new');
@@ -10924,6 +10940,192 @@ G.toTitle = function () {
   G.reset(); G.state = 'title';
   $('hud').classList.remove('show'); $('title').classList.remove('hide'); $('select').classList.remove('show'); $('endPanel').className = 'panel';
   Input.unlock();
+};
+
+'use strict';
+/* ============================================================
+   Progression: hero mastery XP, unlockable colours, titles and
+   finisher effects. Saved locally, synced to the profile online.
+   ============================================================ */
+const MAX_LV = 10;
+const LV_XP = [0, 0, 150, 350, 600, 900, 1250, 1650, 2100, 2600, 3150]; // total xp needed for each level
+const SKINS = [
+  { n: 'CLASSIC', lv: 1 },
+  { n: 'DUSK', lv: 2, tint: 0xd2bfff, main: 0xa98cff, pale: 0xe6dcff, glow: 0xc8b0ff },
+  { n: 'FROST', lv: 5, tint: 0xd8f0ff, main: 0x9fe4ff, pale: 0xf2fbff, glow: 0xc8f0ff },
+  { n: 'GILDED', lv: 8, tint: 0xffe6b0, main: 0xffc840, pale: 0xfff2c8, glow: 0xffe08a },
+];
+const TITLES = {
+  wind: ['BREEZE WALKER', 'STORM DANCER', 'EYE OF THE TEMPEST'],
+  fire: ['SPARK', 'FURNACE FIST', 'SUNBREAKER'],
+  earth: ['PEBBLE', 'IRONROOT', 'MOUNTAIN THAT WALKS'],
+  water: ['RIPPLE', 'UNDERTOW', 'TIDE ETERNAL'],
+};
+const TITLE_LV = [3, 6, 10];
+const FINISHERS = [{ id: 'petals', n: 'PETAL STORM', lv: 4 }, { id: 'ink', n: 'INK SPLASH', lv: 7 }, { id: 'stars', n: 'STARFALL', lv: 9 }];
+
+const Progress = {
+  d: null,
+  load() {
+    if (this.d) return this.d;
+    let d = null; try { d = JSON.parse(localStorage.getItem('galeborn.prog') || 'null'); } catch (e) {}
+    d = d && typeof d === 'object' ? d : {};
+    d.xp = d.xp || {}; d.sel = d.sel || {}; d.games = d.games || {};
+    return (this.d = d);
+  },
+  save() {
+    if (IS_BOT) return;
+    try { localStorage.setItem('galeborn.prog', JSON.stringify(this.d)); } catch (e) {}
+    clearTimeout(this.syncT); this.syncT = setTimeout(() => this.sync(), 1500);
+  },
+  sync() {
+    if (!Api.me || !Api.token) return;
+    Api.rpc('gb_progress_save', { p_token: Api.token, p_progress: { xp: this.d.xp, sel: this.d.sel, games: this.d.games }, p_title: this.titleOf(Hero.id) || '' }).catch(() => {});
+  },
+  // a server copy with more xp wins (new device, cleared storage)
+  merge(remote) {
+    if (!remote || !remote.xp) return;
+    const d = this.load(); let ch = false;
+    for (const h in remote.xp) if ((remote.xp[h] || 0) > (d.xp[h] || 0)) { d.xp[h] = remote.xp[h]; if (remote.sel && remote.sel[h]) d.sel[h] = remote.sel[h]; if (remote.games && remote.games[h]) d.games[h] = remote.games[h]; ch = true; }
+    if (ch) { try { localStorage.setItem('galeborn.prog', JSON.stringify(d)); } catch (e) {} this.applyLocal(); }
+  },
+  xp(h) { return this.load().xp[h] || 0; },
+  level(h) { const x = this.xp(h); let l = 1; while (l < MAX_LV && x >= LV_XP[l + 1]) l++; return l; },
+  sel(h) { const d = this.load(); return (d.sel[h] = d.sel[h] || { skin: 0, title: -1, fin: -1 }); },
+  skinOf(h) { const s = SKINS[this.sel(h).skin] || SKINS[0]; return this.level(h) >= s.lv ? s : SKINS[0]; },
+  titleOf(h) { const i = this.sel(h).title; return i >= 0 && this.level(h) >= TITLE_LV[i] ? TITLES[h][i] : ''; },
+  finOf(h) { const i = this.sel(h).fin; return i >= 0 && this.level(h) >= FINISHERS[i].lv ? FINISHERS[i].id : ''; },
+  unlocksAt(h, lv) {
+    const u = [];
+    SKINS.forEach(s => { if (s.lv === lv) u.push(s.n + ' COLOURS'); });
+    TITLE_LV.forEach((l, i) => { if (l === lv) u.push('TITLE: ' + TITLES[h][i]); });
+    FINISHERS.forEach(f => { if (f.lv === lv) u.push('FINISHER: ' + f.n); });
+    return u;
+  },
+  nextUnlock(h) { for (let l = this.level(h) + 1; l <= MAX_LV; l++) { const u = this.unlocksAt(h, l); if (u.length) return { lv: l, what: u[0] }; } return null; },
+  // award xp after a fight; returns a summary for the end screen
+  grant(kind, won, extra = {}) {
+    if (IS_BOT) return null;
+    const h = Hero.id, d = this.load(), before = this.level(h);
+    let x = { online: won ? 120 : 60, bot: won ? 70 : 35, solo: won ? 150 : 50, training: 100 }[kind] || 30;
+    if (kind === 'bot') x = Math.round(x * ({ easy: 0.6, normal: 1, hard: 1.4 }[extra.diff] || 1));
+    const s = G.stats || {};
+    const bonus = Math.min(60, (s.perfects || 0) * 3 + (s.moments || 0) * 8 + (s.punishes || 0) * 4);
+    x += bonus;
+    d.xp[h] = (d.xp[h] || 0) + x;
+    const g = (d.games[h] = d.games[h] || { p: 0, w: 0 }); if (kind !== 'training') { g.p++; if (won) g.w++; }
+    const after = this.level(h), un = [];
+    for (let l = before + 1; l <= after; l++) un.push(...this.unlocksAt(h, l));
+    this.save();
+    return { h, gain: x, bonus, lv: after, up: after > before, unlocks: un };
+  },
+  endHtml(r) {
+    if (!r) return '';
+    const d = HEROES[r.h], x = this.xp(r.h), lo = LV_XP[r.lv], hi = LV_XP[Math.min(MAX_LV, r.lv + 1)];
+    const k = r.lv >= MAX_LV ? 1 : (x - lo) / Math.max(1, hi - lo);
+    return `<div class="xpLine"><span>${d.name} MASTERY · LV ${r.lv}${r.up ? ' <em>LEVEL UP!</em>' : ''}</span><b>+${r.gain} XP</b><i style="--k:${(k * 100).toFixed(0)}%"></i>${r.unlocks.length ? `<small>UNLOCKED: ${r.unlocks.join(' · ')}</small>` : ''}</div>`;
+  },
+  // ---- cosmetics on the fighters
+  paint(rig, skin, base) {
+    rig.tintHex = skin.tint || 0xffffff;
+    if (rig.skinMat) rig.skinMat.color.setHex(rig.tintHex);
+  },
+  applyLocal() {
+    const h = Hero.id, sk = this.skinOf(h);
+    Hero.apply(h);
+    if (sk.main) { HC.main = sk.main; HC.pale = sk.pale; HC.glow = sk.glow; HC.mid = sk.main; HC.aura = sk.main; C.wind.setHex(sk.main); }
+    const p = G.player; if (p) { this.paint(p.rig, sk); for (const k in p.trails) p.trails[k].mat.uniforms.color.value.setHex(k === 'F' ? HC.pale : HC.main); }
+    const t = this.titleOf(h);
+    if ($('pname')) $('pname').innerHTML = `${Hero.def.name} <small>${t || Hero.def.title}</small>`;
+  },
+  hello() { const h = Hero.id; return { sk: this.sel(h).skin && this.skinOf(h).tint ? SKINS.indexOf(this.skinOf(h)) : 0, ti: this.titleOf(h), fi: this.finOf(h) }; },
+  applyOpp(m) {
+    if (!Opp.puppet) return;
+    const sk = SKINS[m.sk | 0] || SKINS[0];
+    this.paint(Opp.puppet.rig, sk);
+    if (m.ti) document.querySelector('#bossbar small').textContent = m.ti + ' · ' + Opp.def.name;
+    Opp.fin = m.fi || '';
+  },
+};
+
+/* KO flourishes, unlocked by mastery */
+const FinisherFX = {
+  play(id, at) {
+    if (!id || !at) return;
+    if (id === 'petals') {
+      const pink = new THREE.Color(0xff9ac8), wh = new THREE.Color(0xfff0f6);
+      for (let i = 0; i < 4; i++) setTimeout(() => FX.burst(at.clone().add(new V3(rand(-1, 1), rand(0, 1.5), rand(-1, 1))), 40, { speed: 7, life: 2.2, s0: 0.3, s1: 0.2, c0: wh, c1: pink, up: 2, grav: 1.5, drag: 1.4 }), i * 120);
+      FX.ringBill(at, 6, 0xff9ac8, 0.4); FX.popup(at.clone().add(new V3(0, 1.6, 0)), '✿', 'tag', Render.camera);
+    } else if (id === 'ink') {
+      Render.post.impact = 1; FX.impactLines(at, 36, 0x0a0610, 9, 0.45); FX.star(at, 7, 0x0a0610, 0.3); FX.shockwave(at, 0.9, 2.4, 0.7);
+      FX.burst(at, 50, { speed: 14, life: 0.8, s0: 0.5, c0: new THREE.Color(0x1a1020), c1: new THREE.Color(0x000000), add: false, alpha: 0.9, grav: 10 });
+    } else if (id === 'stars') {
+      for (let i = 0; i < 8; i++) setTimeout(() => { const p = at.clone().add(new V3(rand(-3, 3), rand(0.5, 4), rand(-3, 3))); FX.star(p, rand(1.5, 3), 0xfff2b0, 0.35); FX.burst(p, 10, { speed: 4, life: 0.6, s0: 0.25, c0: C.white, c1: new THREE.Color(0xffe080) }); }, i * 90);
+      FX.groundRing(at.clone().setY(0.05), 8, 0xffe080, 0.6);
+    }
+    Sfx.ting(2400);
+  },
+};
+
+'use strict';
+/* ============================================================
+   Profile screen: rating, season, mastery, cosmetics, history.
+   ============================================================ */
+const Profile = {
+  hero: null,
+  init() {
+    $('profBtn').addEventListener('click', e => { e.stopPropagation(); Sfx.init(); Sfx.ui(); this.open(); });
+    $('profile').addEventListener('click', e => {
+      const t = e.target.closest('[data-act]'); if (!t) { if (e.target.id === 'profile') this.close(); return; }
+      e.stopPropagation(); Sfx.ui();
+      const a = t.dataset.act, v = +t.dataset.v;
+      if (a === 'close') return this.close();
+      if (a === 'hero') { this.hero = t.dataset.v; return this.render(); }
+      const h = this.hero, s = Progress.sel(h);
+      if (t.classList.contains('locked')) return;
+      if (a === 'skin') s.skin = v; if (a === 'title') s.title = v; if (a === 'fin') { s.fin = v; if (v >= 0) FinisherFX.play(FINISHERS[v].id, G.player.chest().add(new V3(0, 0.5, -2))); }
+      Progress.save(); if (h === Hero.id) Progress.applyLocal();
+      this.render();
+    });
+  },
+  async open() {
+    this.hero = this.hero || Hero.id;
+    $('profile').classList.add('show');
+    this.render();
+    try {
+      const me = await Api.ensure(); Progress.merge(me.progress);
+      this.hist = await Api.rpc('gb_history', { p_token: Api.token, p_limit: 15 });
+    } catch (e) { this.err = e.message; }
+    this.render();
+  },
+  close() { $('profile').classList.remove('show'); },
+  render() {
+    const me = Api.me, P = Progress, d = P.load(), h = this.hero;
+    const local = HERO_ORDER.map(id => ({ id, g: d.games[id] || { p: 0, w: 0 } }));
+    const online = (this.hist && this.hist.heroes) || {};
+    const playedOf = id => (local.find(x => x.id === id).g.p) + ((online[id] || {}).played || 0);
+    const fav = HERO_ORDER.slice().sort((a, b) => playedOf(b) - playedOf(a))[0];
+    const days = me && me.season ? Math.max(0, Math.ceil((new Date(me.season.ends) - Date.now()) / 864e5)) : null;
+    const head = me ? `<div class="phead"><b>${esc(me.name)}</b>${P.titleOf(Hero.id) ? `<em>${P.titleOf(Hero.id)}</em>` : ''}
+        <div>${tierTag(me.rating)} · ${me.rating}${me.best && me.best > me.rating ? ` (best ${me.best})` : ''} · #${me.rank} · ${me.wins}W ${me.losses}L${me.wins + me.losses ? ` · ${Math.round(me.wins / (me.wins + me.losses) * 100)}%` : ''}</div>
+        ${me.season ? `<small>${me.season.name} · ends in ${days} day${days === 1 ? '' : 's'} · ratings soften halfway back to 1000 at season end</small>` : ''}</div>`
+      : `<div class="phead"><b>PROFILE</b><small>${this.err ? 'Offline: showing progress saved on this device.' : 'Connecting…'}</small></div>`;
+    const cards = HERO_ORDER.map(id => {
+      const lv = P.level(id), x = P.xp(id), lo = LV_XP[lv], hi = LV_XP[Math.min(MAX_LV, lv + 1)], k = lv >= MAX_LV ? 1 : (x - lo) / (hi - lo);
+      const g = local.find(q => q.id === id).g, o = online[id] || { played: 0, won: 0 };
+      const pl = g.p + (o.played || 0), wn = g.w + (o.won || 0);
+      return `<button class="mcard ${id === h ? 'on' : ''}" data-act="hero" data-v="${id}"><svg viewBox="0 0 60 60">${heroGlyph(id)}</svg><b>${HEROES[id].name}</b><span>LV ${lv}${id === fav && pl ? ' · ★' : ''}</span><i style="--k:${(k * 100).toFixed(0)}%"></i><small>${pl ? `${pl} fights · ${Math.round(wn / pl * 100)}% won` : 'not played yet'}</small></button>`;
+    }).join('');
+    const lv = P.level(h), s = P.sel(h), nx = P.nextUnlock(h);
+    const chip = (act, v, label, need, on) => `<button class="chip ${on ? 'on' : ''} ${lv < need ? 'locked' : ''}" data-act="${act}" data-v="${v}">${label}${lv < need ? `<small>LV ${need}</small>` : ''}</button>`;
+    const cos = `<div class="cos"><div class="crow"><span>COLOURS</span>${SKINS.map((k, i) => chip('skin', i, `<i class="sw" style="background:#${(k.main || HEROES[h].pal.main).toString(16).padStart(6, '0')}"></i>${k.n}`, k.lv, s.skin === i)).join('')}</div>
+      <div class="crow"><span>TITLE</span>${chip('title', -1, HEROES[h].title, 1, s.title < 0)}${TITLES[h].map((t, i) => chip('title', i, t, TITLE_LV[i], s.title === i)).join('')}</div>
+      <div class="crow"><span>FINISHER</span>${chip('fin', -1, 'NONE', 1, s.fin < 0)}${FINISHERS.map((f, i) => chip('fin', i, f.n, f.lv, s.fin === i)).join('')}</div>
+      <small class="nx">${nx ? `Next at LV ${nx.lv}: ${nx.what}` : 'Mastery complete.'} Earn XP in any fight; perfects, highlights and punishes add a bonus.</small></div>`;
+    const H = this.hist && this.hist.history || [];
+    const hist = `<h3>RECENT ONLINE DUELS</h3>` + (H.length ? `<table class="hist">${H.map(m => `<tr class="${m.won ? 'w' : 'l'}"><td>${m.won ? 'WIN' : 'LOSS'}</td><td>${HEROES[m.hero] ? HEROES[m.hero].name : '?'} vs ${HEROES[m.opp_hero] ? HEROES[m.opp_hero].name : '?'}</td><td>${esc(m.opp || '?')}</td><td>${m.kind === 'ranked' ? (m.won ? '+' : '−') + (m.delta || 0) : 'friendly'}</td></tr>`).join('')}</table>` : `<p class="dim">No online duels yet.</p>`);
+    $('profBody').innerHTML = head + `<div class="mgrid">${cards}</div>` + cos + hist;
+  },
 };
 
 'use strict';
@@ -11168,7 +11370,7 @@ const Duel = {
     this.install();
     this.match = match; this.active = true; this.started = false; this.ended = false; this.reported = false;
     this.gotHello = false; this.helloT = 0; this.sendT = 0; this.cdT = -1; this.lastRx = performance.now();
-    this.round = 1; this.wins = [0, 0]; this.matchDone = false; this.rmMe = false; this.rmOpp = false;
+    this.gotCos = false; this.round = 1; this.wins = [0, 0]; this.matchDone = false; this.rmMe = false; this.rmOpp = false;
     G.mode = 'duel';
     const odef = HEROES[match.opp.hero] || HEROES.wind;
     if (!G.realBoss) G.realBoss = G.boss;
@@ -11201,7 +11403,8 @@ const Duel = {
     this.lastRx = performance.now();
     const p = G.player;
     switch (m.t) {
-      case 'h': if (!this.gotHello) { this.gotHello = true; this.send({ t: 'h' }); } break;
+      case 'h': if (!this.gotHello) { this.gotHello = true; this.send(Object.assign({ t: 'h' }, Progress.hello())); } if (!this.gotCos) { this.gotCos = true; Progress.applyOpp(m); } break;
+      case 'fin': FinisherFX.play(m.f, p.chest()); break;
       case 's': Opp.puppet.push(m); break;
       case 'hit': {
         if (!this.started || this.ended || !p.alive) return;
@@ -11258,7 +11461,7 @@ const Duel = {
     const p = G.player;
     if (!this.started) {
       this.helloT -= raw;
-      if (this.helloT <= 0 && this.link && this.link.status === 'open') { this.helloT = 0.5; this.send({ t: 'h' }); }
+      if (this.helloT <= 0 && this.link && this.link.status === 'open') { this.helloT = 0.5; this.send(Object.assign({ t: 'h' }, Progress.hello())); }
       if (this.gotHello && this.cdT < 0) { this.cdT = 3; HUD.banner('3', 'flow'); Sfx.P('sfx_vs', 0.8); Sfx.stinger('stinger_intro_vs'); }
       if (this.cdT >= 0) {
         const before = Math.ceil(this.cdT); this.cdT -= raw; const after = Math.ceil(this.cdT);
@@ -11327,6 +11530,8 @@ const Duel = {
       return;
     }
     this.matchDone = true;
+    if (won) { const f = Progress.finOf(Hero.id); if (f) { setTimeout(() => FinisherFX.play(f, Opp.chest()), 250); this.send({ t: 'fin', f }); } }
+    this.xpRes = Progress.grant(this.match.kind === 'bot' ? 'bot' : 'online', won, { diff: Lobby.lastDiff });
     Sfx.intensity = 0; if (won) setTimeout(() => Sfx.victory(), 700); else Sfx.defeat();
     HUD.banner(won ? (why || 'K.O.') : 'DEFEAT', won ? 'fight' : 'flow');
     if (won) setTimeout(() => { if (G.player.alive) G.player.state = 'victory'; HUD.say(Hero.def.name, Hero.def.lines.win, 2.4); }, 900);
@@ -11361,7 +11566,7 @@ const Duel = {
     const r = this.result, m = this.match;
     const s = G.stats;
     let rate = m.kind === 'bot' ? `<div><span>Bot · ${m.opp.rating}</span><b>unranked</b></div>` : m.kind !== 'ranked' ? '<div><span>Friendly duel</span><b>unranked</b></div>' : r ? `<div><span>Rating</span><b>${(r.winner === Api.me?.id ? '+' : '−') + (r.delta || 0)}</b></div>` : '<div><span>Rating</span><b>…</b></div>';
-    $('endStats').innerHTML = rate + `<div><span>Rounds</span><b>${this.wins[0]} – ${this.wins[1]}</b></div><div><span>Time</span><b>${Math.round(s.time)}s</b></div><div><span>Best combo</span><b>${s.maxCombo}</b></div><div><span>Perfect dodges</span><b>${s.perfect}</b></div><div><span>Highlights</span><b>${s.moments || 0}</b></div>`;
+    $('endStats').innerHTML = rate + `<div><span>Rounds</span><b>${this.wins[0]} – ${this.wins[1]}</b></div><div><span>Time</span><b>${Math.round(s.time)}s</b></div><div><span>Best combo</span><b>${s.maxCombo}</b></div><div><span>Perfect dodges</span><b>${s.perfect}</b></div><div><span>Highlights</span><b>${s.moments || 0}</b></div>` + Progress.endHtml(this.xpRes);
   },
   place() {
     const side = this.match.side === 1 ? 1 : -1, p = G.player;
@@ -12224,6 +12429,7 @@ G.flowStep = function () {
   if (!p.grounded) Moment.fire('SKY STEP', 'DODGED ON THIN AIR', null, null, 1);
 };
 G.onVictory = function () {
+  if (!Training.active) { const f = Progress.finOf(Hero.id); if (f) setTimeout(() => FinisherFX.play(f, G.boss.chest(new V3())), 250); }
   if (typeof directedFinisher === 'function') return directedFinisher();
   G.state = 'ending';
   slowmo(0.12, 1.8);
@@ -12275,6 +12481,7 @@ function showEnd(win) {
   $('endTitle').textContent = win ? 'VICTORY' : 'DEFEATED';
   $('endSub').textContent = win ? 'The Cinder Warden falls. The winds are yours.' : 'The embers swallow the sky… rise again.';
   $('endPanel').className = 'panel show ' + (win ? 'win' : 'lose');
+  const xr = Progress.grant('solo', win);
   const m = Math.floor(s.time / 60), sec = Math.floor(s.time % 60);
   $('endStats').innerHTML = `
     <div><span>Time</span><b>${m}:${String(sec).padStart(2, '0')}</b></div>
@@ -12283,7 +12490,7 @@ function showEnd(win) {
     <div><span>Deflects</span><b>${s.deflects}</b></div>
     <div><span>Posture breaks</span><b>${s.breaks}</b></div>
     <div><span>Damage taken</span><b>${Math.round(s.dmgTaken)}</b></div>
-    <div><span>Highlights</span><b>${s.moments || 0}</b></div><div><span>Grazes</span><b>${s.grazes || 0}</b></div>` + (win ? `<div class="rank"><span>Rank</span><b>${rank()}</b></div>` : '');
+    <div><span>Highlights</span><b>${s.moments || 0}</b></div><div><span>Grazes</span><b>${s.grazes || 0}</b></div>` + (win ? `<div class="rank"><span>Rank</span><b>${rank()}</b></div>` : '') + Progress.endHtml(xr);
 }
 G.reset = function () {
   for (const p of G.proj) p.explode(true);
@@ -12348,6 +12555,7 @@ G.setHero = function (id, cb) {
     if (old) { p.pos.copy(old.pos); p.yaw = old.yaw; }
     $('hud').dataset.hero = id;
     HUD.setHero && HUD.setHero();
+    if (!IS_BOT) Progress.applyLocal();
     if (cb) cb();
   });
 };
@@ -12365,7 +12573,7 @@ function main() {
   Input.init(Render.r.domElement);
   HUD.init();
   CutIn.init();
-  Menu.init(); Settings.apply(); Select.build(); if (!IS_BOT) Lobby.init(); SpeedLines.init();
+  Menu.init(); Settings.apply(); Select.build(); if (!IS_BOT) { Lobby.init(); Profile.init(); } SpeedLines.init();
   try { const h = localStorage.getItem('galeborn.hero'); if (HEROES[h]) Hero.apply(h); } catch (e) {}
   G.setHero(Hero.id);
   G.boss = new Boss();
@@ -12500,5 +12708,5 @@ window.addEventListener('load', () => {
 });
 
 </script>
-<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1115-2243</div></body>
+<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1115-2302</div></body>
 </html>

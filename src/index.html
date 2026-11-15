@@ -120,6 +120,18 @@ body.offline #dlBtn { display: none; }
 .btn.alt { filter: hue-rotate(160deg) saturate(1.2); }
 .ovl { position: fixed; inset: 0; z-index: 35; display: none; align-items: center; justify-content: center; background: rgba(6,4,14,.82); padding: 16px; }
 .ovl.show { display: flex; }
+.pbox { width: min(760px, 100%) !important; text-align: left !important; }
+.phead { margin-bottom: 14px; } .phead b { font-size: 26px; font-style: italic; letter-spacing: .08em; margin-right: 10px; } .phead em { color: var(--wind); font-style: normal; font-weight: 800; letter-spacing: .2em; font-size: 12px; }
+.phead div { margin-top: 4px; font-size: 14px; } .phead small, .cos small.nx, .dim { display: block; opacity: .7; font-size: 12px; margin-top: 4px; }
+.mgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; } @media (max-width: 640px) { .mgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.mcard { font: inherit; color: #fff; background: rgba(255,255,255,.05); border: 2px solid rgba(255,255,255,.15); padding: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.mcard.on { border-color: var(--wind); background: rgba(80,200,220,.12); } .mcard svg { width: 44px; height: 44px; } .mcard b { letter-spacing: .12em; font-size: 13px; } .mcard span { font-size: 12px; font-weight: 800; color: var(--wind); }
+.mcard i, .xpLine i { display: block; width: 100%; height: 5px; background: linear-gradient(90deg, var(--wind) var(--k), rgba(255,255,255,.15) var(--k)); margin: 3px 0; } .mcard small { font-size: 10px; opacity: .7; }
+.cos { margin: 14px 0; } .crow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; } .crow > span { width: 86px; font-size: 11px; font-weight: 900; letter-spacing: .2em; color: var(--wind); }
+.chip { font: inherit; font-size: 11px; font-weight: 800; letter-spacing: .12em; color: #fff; background: rgba(255,255,255,.06); border: 2px solid rgba(255,255,255,.18); padding: 5px 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.chip.on { border-color: var(--wind); background: rgba(80,200,220,.2); } .chip.locked { opacity: .4; cursor: default; } .chip small { font-size: 9px; opacity: .8; } .chip .sw { width: 12px; height: 12px; display: inline-block; border: 1px solid #000; }
+.pbox h3 { font-size: 13px; letter-spacing: .3em; color: var(--wind); margin: 14px 0 6px; } table.hist { width: 100%; font-size: 13px; border-collapse: collapse; } .hist td { padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,.08); } .hist tr.w td:first-child { color: #7be08a; font-weight: 900; } .hist tr.l td:first-child { color: #ff6a5a; font-weight: 900; }
+.xpLine { grid-column: 1 / -1; margin-top: 8px; text-align: left; } .xpLine span { font-weight: 900; letter-spacing: .12em; font-size: 13px; } .xpLine b { float: right; color: var(--wind); } .xpLine em { color: #ffd84a; font-style: normal; } .xpLine small { display: block; color: #ffd84a; font-size: 11px; letter-spacing: .1em; margin-top: 2px; }
 .ovl .box { width: min(520px, 100%); max-height: 90vh; overflow: auto; background: rgba(14,12,26,.95); border-left: 5px solid var(--wind); padding: 22px 24px; text-align: center; }
 .ovl h2 { margin: 0 0 14px; font-style: italic; letter-spacing: .2em; color: var(--wind); }
 .lbRow { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; font-size: 13px; }
@@ -191,6 +203,7 @@ body.awake .portrait, body.awake #flowRingFg { filter: drop-shadow(0 0 8px #5ff0
 #endStats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 28px; margin: 10px 0 24px; min-width: min(420px, 100%); }
 #endStats div { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.15); padding: 4px 0; }
 #endStats span { opacity: 0.75; } #endStats b { color: var(--wind); }
+#endStats div.xpLine { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; grid-column: 1 / -1; border: none; } #endStats .xpLine span { opacity: 1; } #endStats .xpLine i, #endStats .xpLine small { flex-basis: 100%; }
 #endStats .rank { grid-column: 1 / -1; justify-content: center; gap: 20px; align-items: center; border: none; }
 #endStats .rank b { font-size: 64px; font-style: italic; color: #ffe080; text-shadow: 4px 4px 0 var(--ink), 0 0 20px #ffb020; }
 #pause { background: rgba(8,6,14,0.82); z-index: 40; }
@@ -370,6 +383,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
 <div id="select"><div id="selInfo"></div><div id="selBottom"><div id="selCards"></div><button class="btn" id="selGo">FIGHT</button><div class="selHint"><span class="ic" data-act="move"></span> choose · <span class="ic" data-act="light"></span> fight</div></div></div>
 <div id="heat"></div>
 <div id="lobby" class="ovl"><div class="box"><h2 id="lbTitle">DUEL</h2><div class="lbRow"><label>Name</label><input id="lbName" maxlength="16" autocomplete="off"><span id="lbMe"></span></div><p id="lbStatus"></p><div id="lbBody"></div><button class="btn small" id="lbClose">BACK</button></div></div>
+<div id="profile" class="ovl"><div class="box pbox"><div id="profBody"></div><button class="btn small" data-act="close">CLOSE</button></div></div>
 <div id="board" class="ovl"><div class="box"><h2>LEADERBOARD</h2><div id="boardBody"></div><button class="btn small" id="boardClose">CLOSE</button></div></div>
 <div id="title">
   <h1>GALEBORN</h1>
@@ -386,7 +400,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
     </div>
   </div>
   <div class="mbar">
-    <button class="mb" id="lbBtn">LEADERBOARD</button><button class="mb" id="settingsBtn">SETTINGS</button><button class="mb" id="ctrlBtn">CONTROLS</button><a class="mb" id="dlBtn" href="galeborn-offline.html" download="Galeborn.html" title="One file that runs offline in any browser (about 24 MB)">DOWNLOAD</a>
+    <button class="mb" id="profBtn">PROFILE</button><button class="mb" id="lbBtn">LEADERBOARD</button><button class="mb" id="settingsBtn">SETTINGS</button><button class="mb" id="ctrlBtn">CONTROLS</button><a class="mb" id="dlBtn" href="galeborn-offline.html" download="Galeborn.html" title="One file that runs offline in any browser (about 24 MB)">DOWNLOAD</a>
   </div>
 </div>
 <div class="panel" id="pause"><h1>PAUSED</h1><h2 class="settingsTitle">SETTINGS</h2><div id="settings"></div><p class="hintline"><span class="ic" data-act="pause"></span> back</p></div>
