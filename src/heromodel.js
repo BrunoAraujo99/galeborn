@@ -7,7 +7,18 @@
    ============================================================ */
 const HeroModel = {
   gltf: null,
+  bufs: {},
+  // web build: models are separate files fetched on demand (and cached)
+  fetchBuf(id) {
+    if (!this.bufs[id]) this.bufs[id] = fetch('heroes/' + id + '.glb').then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); });
+    return this.bufs[id];
+  },
   load(id, cb) {
+    if (typeof ASSET_WEB !== 'undefined' && THREE.GLTFLoader) {
+      this.fetchBuf(id).then(buf => new THREE.GLTFLoader().parse(buf.slice(0), '', g => { this.gltf = g; cb(g); }, e => { console.warn('hero model failed', e); cb(null); }))
+        .catch(e => { console.warn('hero model fetch failed', e); cb(null); });
+      return;
+    }
     const b64 = HERO_B64()[id];
     if (!b64 || !THREE.GLTFLoader) return cb(null);
     try {
@@ -276,7 +287,19 @@ void main(){
   }
   setAura(on) { this.aura.visible = on; }
   // freeze the current skinned pose into a static mesh (afterimages)
+  // frozen copy of the current pose, skinned on the GPU (shares geometry, owns a static skeleton)
   bake(mat) {
+    const skin = this.skin;
+    skin.updateMatrixWorld(true); skin.skeleton.update();
+    const sk = new THREE.Skeleton(skin.skeleton.bones.slice(), skin.skeleton.boneInverses);
+    sk.boneMatrices.set(skin.skeleton.boneMatrices.subarray(0, sk.boneMatrices.length)); sk.update = () => {};
+    const m = new THREE.SkinnedMesh(skin.geometry, mat);
+    m.bindMode = skin.bindMode; m.bind(sk, skin.bindMatrix);
+    m.matrixAutoUpdate = false; m.matrix.copy(skin.matrixWorld); m.matrixWorld.copy(skin.matrixWorld);
+    m.frustumCulled = false; m.userData.ghostSkel = sk;
+    return m;
+  }
+  bakeCPU(mat) {
     const skin = this.skin, geo = skin.geometry, pos = geo.attributes.position, n = pos.count;
     const out = new Float32Array(n * 3), v = new V3();
     skin.updateMatrixWorld(true); skin.skeleton.update();

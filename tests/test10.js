@@ -1,0 +1,23 @@
+const { chromium } = require('playwright');
+(async () => {
+  const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
+  const errs = [];
+  page.on('pageerror', e => errs.push('PAGEERR: ' + e.message + ' ' + e.stack));
+  await page.goto('file:///home/claude/duel/dist/galeborn.html');
+  await page.waitForFunction(() => window.__heroModel !== undefined, null, { timeout: 60000 }).catch(() => {});
+  await page.click('#playBtn'); await page.waitForTimeout(500);
+  await page.evaluate(() => __G.beginFight());
+  await page.waitForTimeout(800);
+  await page.evaluate(() => { window.__cu = Cam.update; __G.boss.update = function(){}; const p = __G.player; p.pos.set(0,0,0);
+    Cam.update = function () { const p = __G.player.pos, y = __G.player.yaw; Render.camera.position.set(p.x + Math.sin(y + 1.2) * 4, 1.3, p.z + Math.cos(y + 1.2) * 4); Render.camera.lookAt(p.x, 0.95, p.z); }; });
+  await page.keyboard.down('w'); await page.waitForTimeout(1800); await page.screenshot({ path: '/tmp/claude-0/shots/c_run1.png' });
+  await page.waitForTimeout(500); await page.screenshot({ path: '/tmp/claude-0/shots/c_run2.png' }); await page.keyboard.up('w');
+  await page.evaluate(() => { const p = __G.player; p.buf = 'dash'; p.bufT = 1; }); await page.waitForTimeout(250); await page.screenshot({ path: '/tmp/claude-0/shots/c_dash.png' });
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => { Cam.update = window.__cu; });
+  await page.evaluate(() => { const p = __G.player; p.state='move'; p.flow = 100; p.buf = 'special'; p.bufT = 1; });
+  await page.waitForTimeout(900); await page.screenshot({ path: '/tmp/claude-0/shots/c_cutin.png' });
+  console.log('ERRORS', errs.join('\n'));
+  await browser.close();
+})();

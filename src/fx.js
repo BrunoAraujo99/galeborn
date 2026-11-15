@@ -318,6 +318,8 @@ const FX = {
   },
   // generic timed effect
   add(obj, dur, fn, parent) {
+    // effect budget: past the cap, the oldest timed effect finishes early
+    if (obj && this.list.length > 140) { const old = this.list.find(e => e.obj && e.t < e.dur); if (old) old.t = old.dur; }
     if (obj) (parent || this.scene).add(obj);
     const e = { obj, t: 0, dur, fn };
     this.list.push(e);
@@ -421,8 +423,11 @@ const FX = {
     const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     mat.userData.shared = true;
     if (rig.model) {
+      const now = performance.now();
+      if (now - (rig._ghostAt || 0) < 30 || this.list.length > 110) return; // ghost budget
+      rig._ghostAt = now;
       const m = rig.model.bake(mat);
-      this.add(m, 0.28, (e, k) => { mat.opacity = 0.4 * (1 - k); if (k >= 1) { mat.dispose(); m.geometry.dispose(); } });
+      this.add(m, 0.28, (e, k) => { mat.opacity = 0.4 * (1 - k); if (k >= 1) { mat.dispose(); if (m.userData.ghostSkel) m.userData.ghostSkel.dispose(); else m.geometry.dispose(); } });
       return;
     }
     const g = rig.root.clone(true);

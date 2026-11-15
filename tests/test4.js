@@ -1,0 +1,34 @@
+const { chromium } = require('playwright');
+(async () => {
+  const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const page = await browser.newPage({ viewport: { width: 800, height: 450 } });
+  const errs = [];
+  page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errs.push(m.text()); });
+  page.on('pageerror', e => errs.push('PAGEERR: ' + e.message + ' ' + e.stack));
+  await page.goto('file:///home/claude/duel/dist/galeborn.html');
+  await page.waitForTimeout(1200);
+  const S = async n => page.screenshot({ path: `/tmp/claude-0/shots/r2_${n}.png` });
+  await page.click('#playBtn'); await page.waitForTimeout(500);
+  await page.evaluate(() => __G.beginFight());
+  await page.waitForTimeout(800); await S('fight');
+  // finisher into pillar: place boss next to pillar, player on other side
+  await page.evaluate(() => { const P = World.dpillars[0]; const b = __G.boss; const d = new THREE.Vector3(P.x, 0, P.z).normalize();
+    b.pos.set(P.x - d.x * 2.4, 0, P.z - d.z * 2.4); b.state = 'idle'; b.cool = 5;
+    const p = __G.player; p.pos.set(P.x - d.x * 5.0, 0, P.z - d.z * 5.0); p.comboIdx = 3; p.comboT = 1; p.state='move'; p.buf='light'; p.bufT=5; p.yaw=Math.atan2(d.x,d.z); });
+  await page.waitForTimeout(700); await S('splat_a');
+  await page.waitForTimeout(1500); await S('splat_b');
+  console.log(await page.evaluate(() => 'pillar0 broken ' + World.dpillars[0].broken + ' bossHp ' + __G.boss.hp + ' debris ' + World.debris.length));
+  await page.evaluate(() => { const b = __G.boss; b.cool=0; b.cancelAttack(); b.atk = b.leap(); b.atk.name='leap'; b.state = 'attack'; b.at = 0; b.prevAt = -1; __G.player.hp = 100; });
+  await page.waitForTimeout(6000); await S('leap');
+  await page.evaluate(() => { const b = __G.boss; b.cancelAttack(); b.atk = b.wave(); b.atk.name='wave'; b.state = 'attack'; b.at = 0; b.prevAt = -1; __G.player.hp = 100; });
+  await page.waitForTimeout(5000); await S('wave');
+  await page.evaluate(() => { __G.player.flow = 100; __G.player.hp = 100; __G.player.state='move'; __G.boss.state='idle'; __G.boss.cool=9; });
+  await page.keyboard.press('KeyE');
+  await page.waitForTimeout(4000); await S('special');
+  await page.waitForTimeout(7000); await S('special_end');
+  console.log(await page.evaluate(() => 'craters ' + World.craters.length + ' broken ' + World.dpillars.filter(p=>p.broken).length + ' state ' + __G.boss.state));
+  await page.evaluate(() => __G.startIntro()); await page.waitForTimeout(500);
+  console.log(await page.evaluate(() => 'after reset broken ' + World.dpillars.filter(p=>p.broken).length + ' craters ' + World.craters.length));
+  console.log('ERRORS', [...new Set(errs)].filter(e => !e.includes('deprecated')).join('\n'));
+  await browser.close();
+})();

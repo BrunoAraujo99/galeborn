@@ -181,7 +181,8 @@ const Render = {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     const pr = this.r.getPixelRatio();
-    const W = Math.floor(w * pr), H = Math.floor(h * pr);
+    const ds = typeof Perf !== 'undefined' ? Perf.scale : 1;
+    const W = Math.floor(w * pr * ds), H = Math.floor(h * pr * ds);
     this.rtScene.setSize(W, H);
     this.rtCut.setSize(W, Math.max(4, Math.floor(H * 0.34)));
     let lw = W >> 1, lh = H >> 1;

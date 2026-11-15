@@ -4,15 +4,15 @@
    pause/settings menu (mouse, keyboard and gamepad navigable)
    ============================================================ */
 const QUALITY = {
-  ultra: { label: 'ULTRA', pr: 2.0, samples: 4, shadow: 2048, soft: true, particles: 1 },
-  high: { label: 'HIGH', pr: 1.5, samples: 4, shadow: 2048, soft: true, particles: 1 },
+  ultra: { label: 'ULTRA', pr: 1.5, samples: 4, shadow: 2048, soft: true, particles: 1 },
+  high: { label: 'HIGH', pr: 1.25, samples: 4, shadow: 2048, soft: false, particles: 1 },
   medium: { label: 'MEDIUM', pr: 1.0, samples: 2, shadow: 1024, soft: true, particles: 0.85 },
   low: { label: 'LOW', pr: 0.75, samples: 0, shadow: 512, soft: false, particles: 0.6 },
 };
 const Q_ORDER = ['ultra', 'high', 'medium', 'low'];
 
 const Settings = {
-  v: { quality: 'auto', sens: 1, invertY: false, shake: 1, master: 0.7, music: 0.55, fps: true, camLag: true, lines: true },
+  v: { quality: 'auto', sens: 1, invertY: false, shake: 1, master: 0.7, music: 0.55, fps: true, camLag: true, lines: true, drs: true },
   load() {
     try { const s = JSON.parse(localStorage.getItem('galeborn.settings') || '{}'); Object.assign(this.v, s); } catch (e) {}
   },
@@ -81,6 +81,7 @@ const Menu = {
       { key: 'fps', label: 'Show frame rate', type: 'toggle' },
       { key: 'sens', label: 'Camera sensitivity', type: 'range', min: 0.3, max: 2.5, step: 0.1, fmt: x => x.toFixed(1) + '×' },
       { key: 'invertY', label: 'Invert camera Y', type: 'toggle' },
+      { key: 'drs', label: 'Dynamic resolution', type: 'toggle' },
       { key: 'camLag', label: 'Chase camera lag', type: 'toggle' },
       { key: 'lines', label: 'Speed lines', type: 'toggle' },
       { key: 'shake', label: 'Screen shake', type: 'range', min: 0, max: 1.5, step: 0.1, fmt: pct },

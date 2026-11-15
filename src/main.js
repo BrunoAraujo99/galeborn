@@ -104,7 +104,7 @@ const Cam = {
       const occl = !PL.broken && seg2Dist(PL.x, PL.z, cam.position.x, cam.position.z, pp.x, pp.z) < PL.r + 0.6 && horizDist(cam.position, new V3(PL.x, 0, PL.z)) < horizDist(cam.position, pp);
       PL.fade = damp(PL.fade, occl ? 0.25 : 1, 10, dt);
       for (const m of PL.mats) { m.opacity = PL.fade; m.depthWrite = PL.fade > 0.95; }
-      const ov = PL.fade > 0.9; if (PL.outlineVis !== ov) { PL.outlineVis = ov; PL.group.traverse(o => { if (o.userData.isOutline) o.visible = ov; }); }
+      const ov = PL.fade > 0.9; if (PL.outlineVis !== ov) { PL.outlineVis = ov; PL.group.traverse(o => { if (o.userData.isOutline && !o.userData.inBatch) o.visible = ov; }); }
     }
     this.applyShake(dt, cam);
   },
@@ -296,6 +296,7 @@ function main() {
   G.boss = new Boss();
   { const seen = new Set(); G.boss.rig.root.traverse(o => { if (o.isMesh && o.material && o.material.isMeshToonMaterial && !seen.has(o.material)) { seen.add(o.material); addRim(o.material, 0xff8a40, 0.4, 0.6); } }); }
   G.reset();
+  Perf.init();
   Cam.yaw = 0.6; Cam.pos.set(10, 6, 14);
   const canvas = Render.r.domElement;
   canvas.addEventListener('click', () => { if (G.state === 'fight' && !G.paused) Input.lock(); });
@@ -318,7 +319,7 @@ function main() {
     if (!IS_BOT) requestAnimationFrame(frame);
     const elapsed = IS_BOT ? botRaw : (now - last) / 1000;
     const raw = Math.min(elapsed, 1 / 20); last = now;
-    Quality.tick(Math.min(elapsed, 1));
+    Quality.tick(Math.min(elapsed, 1)); Perf.tick(Math.min(elapsed, 1));
     G.time += raw;
     const a = IS_BOT ? BotAI.input(raw) : Input.poll();
     if (a.mute) Sfx.setMuted(!Sfx.muted);

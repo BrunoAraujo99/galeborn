@@ -25,7 +25,7 @@ const SpeedLines = {
     this.flick -= raw;
     if (this.flick <= 0) { this.flick = 1 / 24; this.el.style.transform = `rotate(${rand(0, 360)}deg) scale(${1 + rand(0, 0.06)})`; }
     const o = this.amt < 0.03 ? 0 : this.amt;
-    if (Math.abs((this.lastO || 0) - o) > 0.01) { this.el.style.opacity = o.toFixed(2); this.lastO = o; }
+    if (Math.abs((this.lastO || 0) - o) > 0.01) { this.el.style.opacity = o.toFixed(2); this.el.style.display = o > 0 ? '' : 'none'; this.lastO = o; }
   },
 };
 

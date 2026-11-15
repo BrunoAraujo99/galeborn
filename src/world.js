@@ -394,7 +394,7 @@ const World = {
     m.renderOrder = 11; m.userData.t = 0; m.userData.hot = hot;
     this.scene.add(m);
     this.craters.push(m);
-    if (this.craters.length > 22) { const o = this.craters.shift(); this.scene.remove(o); o.material.dispose(); }
+    if (this.craters.length > 12) { const o = this.craters.shift(); this.scene.remove(o); o.material.dispose(); }
     // kicked-up floor chunks
     this.spawnDebris(pos, Math.round(size * 1.2), size * 0.35, 'floor');
   },
@@ -403,7 +403,7 @@ const World = {
       const s = kind === 'floor' ? rand(0.18, 0.5) : rand(0.3, 0.7);
       const geo = new THREE.DodecahedronGeometry(s, 0);
       const m = new THREE.Mesh(geo, kind === 'floor' ? this.floorMat : this.stoneMat);
-      m.castShadow = true; m.userData.ownGeo = true;
+      m.castShadow = s > 0.38; m.userData.ownGeo = true;
       m.position.set(pos.x + rand(-spread, spread), Math.max(pos.y, 0) + s, pos.z + rand(-spread, spread));
       m.scale.set(1, rand(0.6, 1.2), rand(0.7, 1.3));
       const out = new V3(m.position.x - pos.x, 0, m.position.z - pos.z).normalize();
@@ -415,7 +415,7 @@ const World = {
   addBody(m, v, s) {
     this.scene.add(m);
     this.debris.push({ m, v, w: new V3(rand(-8, 8), rand(-8, 8), rand(-8, 8)), s, life: rand(6, 9), rest: false });
-    if (this.debris.length > 140) { const o = this.debris.shift(); this.removeBody(o); }
+    if (this.debris.length > 60) { const o = this.debris.shift(); this.removeBody(o); }
   },
   removeBody(o) { this.scene.remove(o.m); if (o.m.userData.ownGeo) o.m.geometry.dispose(); },
   updateEnv(dt) {

@@ -58,7 +58,25 @@ const Sfx = {
   },
   // ---------- sample layer (embedded clips; synth is the fallback) ----------
   bufs: {}, vo: null,
+  sampleKey(name) { return /^vo_.*_(intro|ult|tempest|nova|phase2)_\d\d$|^vo_varukh_vs_\w+_\d\d$/.test(name) ? name : name.replace(/_\d\d$/, ''); },
   loadSamples() {
+    if (typeof ASSET_WEB !== 'undefined') {
+      // web build: stream clips as separate files, effects first, then voices, then music
+      if (!this.ctx || this._loading) return;
+      this._loading = true;
+      const rank = n => n.startsWith('sfx_') ? 0 : n.startsWith('stinger') ? 1 : n.startsWith('vo_') ? 2 : 3;
+      const q = AUDIO_LIST.slice().sort((a, b) => rank(a) - rank(b));
+      const next = () => {
+        const name = q.shift(); if (!name) return;
+        fetch('audio/' + name + '.mp3').then(r => r.arrayBuffer()).then(buf => this.ctx.decodeAudioData(buf)).then(b => {
+          const key = this.sampleKey(name);
+          (this.bufs[key] = this.bufs[key] || []).push(b);
+          if (key === this._wantMusic) this.playMusic(key);
+        }).catch(() => {}).finally(next);
+      };
+      for (let i = 0; i < 6; i++) next();
+      return;
+    }
     const src = typeof AUDIO_B64 !== 'undefined' ? AUDIO_B64 : null;
     if (!this.ctx || !src || this._loading) return;
     this._loading = true;
