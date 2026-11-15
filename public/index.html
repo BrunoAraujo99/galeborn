@@ -245,6 +245,8 @@ body.awake .portrait, body.awake #flowRingFg { filter: drop-shadow(0 0 8px #5ff0
 /* player panel */
 #pbars { display: flex; align-items: center; gap: 12px; width: min(440px, calc(100% - 32px)); }
 .portrait { position: relative; width: 78px; height: 78px; flex: none; }
+#pburst { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%) skewX(-12deg); z-index: 2; padding: 1px 6px; font-size: 9px; font-weight: 900; letter-spacing: .16em; color: #8a8f9a; border: 1px solid #000; background: linear-gradient(90deg, rgba(255,255,255,.28) var(--k, 0%), rgba(10,8,15,.85) var(--k, 0%)); white-space: nowrap; }
+#pburst.ready { color: #fff; background: linear-gradient(90deg, #ff4a6a, #ffb040); box-shadow: 0 0 10px #ff6a4a; animation: ringglow .5s infinite alternate; }
 .portrait .ring { position: absolute; inset: 0; transform: rotate(-90deg); }
 .ring-bg { fill: none; stroke: rgba(10,8,18,.8); stroke-width: 7; }
 .ring-fg { fill: none; stroke: #2fd8ff; stroke-width: 7; stroke-dasharray: 213.6; stroke-dashoffset: 213.6; stroke-linecap: round; transition: stroke-dashoffset .15s; filter: drop-shadow(0 0 4px #2fd8ff); }
@@ -321,6 +323,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
   <div id="pbars">
     <div class="portrait">
       <svg class="ring" viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" class="ring-bg"/><circle cx="40" cy="40" r="34" class="ring-fg" id="flowRingFg"/></svg>
+      <div id="pburst"><span>BURST</span></div>
       <svg class="pface" viewBox="0 0 60 60"><circle cx="30" cy="30" r="24" fill="#10213a"/><path d="M14 34 C14 20 30 14 40 20 C46 24 44 33 36 33 C30 33 29 26 34 25" fill="none" stroke="#7ff6ec" stroke-width="3.5" stroke-linecap="round"/><path d="M18 42 C26 46 40 44 46 36" fill="none" stroke="#2fb8ff" stroke-width="3" stroke-linecap="round"/></svg>
     </div>
     <div class="pmain">
@@ -375,6 +378,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
   <div><b>Gale (hold)</b><span class="ic" data-act="heavy"></span></div><div><b>Gale Rush</b><span class="ic" data-act="dash"></span><i class="or">then</i><span class="ic" data-act="light"></span></div>
   <div><b>Dive slam</b><i class="or">in air</i><span class="ic" data-act="heavy"></span></div><div><b>Tempest</b><span class="ic" data-act="special"></span></div>
   <div><b>Lock-on</b><span class="ic" data-act="lock"></span></div><div><b>Recover</b><i class="or">when launched</i><span class="ic" data-act="dash"></span></div>
+  <div><b>Launcher</b><i class="or">back +</i><span class="ic" data-act="light"></span></div><div><b>Burst</b><i class="or">when hit, gauge full</i><span class="ic" data-act="block"></span></div>
   <div><b>Block</b><span class="ic" data-act="block"></span></div><div><b>Parry</b><i class="or">tap just before a hit</i><span class="ic" data-act="block"></span></div>
   <div><b>Pause</b><span class="ic" data-act="pause"></span></div><div><b>Mute / help</b><span class="ic" data-act="mute"></span><span class="ic" data-act="help"></span></div>
 </div>
@@ -7880,7 +7884,7 @@ class Player {
     this.state = 'move'; this.st = 0; this.grounded = true; this.jumps = 0; this.airDashes = 0; this.airHits = 0;
     this.comboIdx = 0; this.comboT = 0; this.buf = null; this.bufT = 0;
     this.invuln = 0; this.dodgeInv = 0; this.perfectWin = 0; this.perfectUsed = false; this.counterT = 0;
-    this.guard = GUARD_MAX; this.guardRegenT = 0; this.blockCd = 0; this.blockStunT = 0; this.parryUsed = false; this.blockHeld = false;
+    this.guard = GUARD_MAX; this.guardRegenT = 0; this.blockCd = 0; this.blockStunT = 0; this.parryUsed = false; this.blockHeld = false; this.burst = 0;
     this.move = null; this.moveHit = false; this.ghostT = 0; this.runPh = 0; this.chargeLv = 0;
     this.combo = 0; this.comboTimer = 0; this.alive = true; this.hurtFlash = 0;
     this.rig.root.position.copy(this.pos); this.rig.root.rotation.set(0, this.yaw, 0);
@@ -7937,6 +7941,7 @@ class Player {
     const wish = this.wishDir(a);
     const hasWish = wish.lengthSq() > 0.01;
     Guard.update(this, dt);
+    if (this.buf === 'block' && Burst.can(this)) { this.buf = null; Burst.fire(this); }
     const S = this.state;
 
     if (S === 'move') this.updMove(dt, a, wish, hasWish);
@@ -7990,6 +7995,7 @@ class Player {
     }
     if (this.take('light')) {
       if (this.counterT > 0 && G.boss.alive) return this.startCounter();
+      if (g && backInput(this, wish, hasWish)) return this.startAttack(launcherFor(Hero.id), false, wish, hasWish);
       if (g) { if (this.comboT <= 0) this.comboIdx = 0; return this.startAttack(this.ms.light[this.comboIdx % this.ms.light.length], false, wish, hasWish); }
       if (this.airHits < this.ms.air.length) return this.startAttack(this.ms.air[this.airHits], true, wish, hasWish);
     }
@@ -8174,7 +8180,7 @@ class Player {
     this.lungeV = lv;
     if (air) { this.airHits++; this.vel.y = Math.max(this.vel.y * 0.2, 2.5); }
     if (!Sfx.el(m.big || m.finisher ? 'swing_heavy' : 'swing_light', 0.7)) Sfx.whoosh(m.pitch || 1, 0.42);
-    if (!air && !m.counter) this.comboIdx = (this.comboIdx + 1) % this.ms.light.length;
+    if (!air && !m.counter && !m.launcher) this.comboIdx = (this.comboIdx + 1) % this.ms.light.length;
     this.comboT = m.dur + 0.4;
   }
   startCounter() {
@@ -8239,8 +8245,10 @@ class Player {
       this.tryDeflect(c, m.r);
     }
     // cancels
-    if (t >= m.cancel) {
+    // landing a hit opens the cancel window early
+    if (t >= (this.moveHit ? Math.min(m.cancel, m.a1 + 0.03) : m.cancel)) {
       if (this.buf === 'light') {
+        if (!this.moveAir && this.grounded && !m.launcher && !m.counter && backInput(this, wish, wish.lengthSq() > 0.01)) { this.buf = null; return this.startAttack(launcherFor(Hero.id), false, wish, true); }
         if (this.counterT > 0 && G.boss.alive) { this.buf = null; return this.startCounter(); }
         if (!this.moveAir && this.grounded && !m.counter) { this.buf = null; return this.startAttack(this.ms.light[this.comboIdx % this.ms.light.length], false, wish, wish.lengthSq() > 0.01); }
         if (this.moveAir && this.airHits < this.ms.air.length) { this.buf = null; return this.startAttack(this.ms.air[this.airHits], true, wish, wish.lengthSq() > 0.01); }
@@ -8267,7 +8275,7 @@ class Player {
       const hdir = m.pull ? new V3(this.pos.x - b.pos.x, 0, this.pos.z - b.pos.z).normalize() : m.aoe ? new V3(b.pos.x - this.pos.x, 0, b.pos.z - this.pos.z).normalize() : fwd.clone();
       if (m.spike && !b.grounded) hdir.y = -1;
       const res = b.takeDamage(m.dmg * (sky ? 1.8 : 1), m.post * (sky ? 2 : 1), hp, hdir, { big: m.big || sky, src: 'melee', counter: m.counter, pull: m.pull, spike: m.spike, knock: sky ? 14 : m.counter ? 11 : m.pull ? m.pull : m.knock != null ? m.knock : m.finisher ? 15 : null });
-      if (res) this.onDealtHit(res, hp, fwd, m.big || sky, sky ? 0.14 : m.counter ? 0.16 : m.big ? 0.1 : 0.06, sky ? 'skyfall' : m.counter ? 'counter' : m.finisher ? 'finisher' : '');
+      if (res) this.onDealtHit(res, hp, fwd, m.big || sky, sky ? 0.14 : m.counter ? 0.16 : m.big ? 0.1 : 0.06, sky ? 'skyfall' : m.counter ? 'counter' : m.finisher ? 'finisher' : m.launcher ? 'launcher' : '');
       if (res && sky) Moment.fire('SKYFALL', 'PILLAR VAULT → AIR STRIKE', hp, fwd, 2);
     }
   }
@@ -8297,14 +8305,14 @@ class Player {
       FX.fovKick -= 6; FX.shockwave(point, 0.45, 1.2); FX.sfxWord(point, false);
       Cam.dutch((Math.random() < 0.5 ? -1 : 1) * 0.07);
     } else FX.fovKick -= 1.2;
-    const label = { counter: 'COUNTER', finisher: 'FINISHER', splat: 'WALL SPLAT', slam: 'CRASH', reflect: 'RETURN', rush: 'GALE RUSH', pursuit: 'PURSUIT', skyfall: 'SKYFALL', topple: 'TOPPLE' }[tag] || '';
+    const label = { counter: 'COUNTER', finisher: 'FINISHER', splat: 'WALL SPLAT', slam: 'CRASH', reflect: 'RETURN', rush: 'GALE RUSH', pursuit: 'PURSUIT', skyfall: 'SKYFALL', topple: 'TOPPLE', launcher: 'LAUNCH' }[tag] || '';
     FX.dmgNumber(point, res.dmg, tag === 'counter' || tag === 'splat' ? 'gold' : big ? 'big' : '', label);
     if (tag === 'counter' || tag === 'finisher' || tag === 'splat') {
       Cam.impactShot(point, dir, tag === 'splat' ? 0.9 : 0.7);
       slowmo(0.22, tag === 'counter' ? 0.5 : 0.38);
       FX.shockwave(point, 0.7, 1.6, 0.6);
     }
-    this.gainFlow(big ? 6 : 3.5);
+    this.gainFlow(big ? 6 : 3.5); Burst.gain(this, big ? 3 : 1.5);
     this.combo++; this.comboTimer = 2.2; this.comboDmg = (this.combo === 1 ? 0 : (this.comboDmg || 0)) + res.dmg;
     G.stats.maxCombo = Math.max(G.stats.maxCombo, this.combo);
     if (res.broke) this.gainFlow(15);
@@ -8513,8 +8521,9 @@ class Player {
       return 'dodged';
     }
     if (this.invuln > 0) return 'immune';
-    const gr = Guard.check(this, dmg, dir, kind, src);
+    const gr = kind === 'burst' ? '' : Guard.check(this, dmg, dir, kind, src);
     if (gr) return gr;
+    if (kind === 'burst') kind = 'heavy';
     if (this.state === 'guardbreak') dmg = Math.round(dmg * 1.25);
     if (Kit.armored(this) && kind !== 'launch' && this.hp > dmg * 0.5) {
       // stoneskin: take half, keep swinging
@@ -8522,7 +8531,7 @@ class Player {
       FX.dmgNumber(this.chest(), dmg, 'hurt', 'ARMOR'); FX.burst(this.chest(), 12, { speed: 6, life: 0.4, s0: 0.4, c0: C.dust, c1: C.dust, add: false, alpha: 0.6 }); FX.shake(0.3); Sfx.hit(1.2);
       return 'hit';
     }
-    this.hp -= dmg; this.hurtFlash = 1;
+    this.hp -= dmg; this.hurtFlash = 1; Burst.gain(this, src === 'pvp' ? dmg * 4.5 : dmg * 0.9);
     G.stats.dmgTaken += dmg;
     this.combo = 0; this.counterT = 0;
     for (const k in this.trails) this.trails[k].emit = false;
@@ -8724,7 +8733,7 @@ class Boss {
 
   takeDamage(dmg, post, point, dir, o = {}) {
     if (!this.alive || this.state === 'transition' || this.state === 'intro') return null;
-    const mult = (this.state === 'stagger' ? 1.5 : 1) * (G.player.awake ? 1.3 : 1) * (o.src === 'burn' ? 1 : Hero.def.stats.dmg);
+    const mult = (this.state === 'stagger' ? 1.5 : 1) * (G.player.awake ? 1.3 : 1) * (o.src === 'burn' ? 1 : Hero.def.stats.dmg) * elemMult(Hero.id, 'fire');
     const d = Math.max(1, Math.round(dmg * mult * rand(0.92, 1.08)));
     this.hp -= d;
     this.flash = 1;
@@ -9480,7 +9489,7 @@ const FLOW_C = 2 * Math.PI * 34;
 const HUD = {
   init() {
     this.el = {
-      hp: $('php'), hpLag: $('phplag'), flow: $('pflow'), flowBox: $('pbars'), bhp: $('bhp'), bhpLag: $('bhplag'), post: $('bpost'), bbar: $('bossbar'), pbar: $('pbar'), gbar: $('pgbar'), guard: $('pguard'),
+      hp: $('php'), hpLag: $('phplag'), flow: $('pflow'), flowBox: $('pbars'), bhp: $('bhp'), bhpLag: $('bhplag'), post: $('bpost'), bbar: $('bossbar'), pbar: $('pbar'), gbar: $('pgbar'), guard: $('pguard'), burst: $('pburst'),
       combo: $('combo'), comboN: $('comboN'), comboR: $('comboR'), comboD: $('comboD'), banner: $('banner'), reticle: $('reticle'), hud: $('hud'), bossbar: $('bossbar'),
       lockTag: $('locktag'), ring: $('flowRingFg'), prompt: $('prompt'), sub: $('subtitle'), pip2: $('pip2'), postRow: $('postRow'),
     };
@@ -9497,6 +9506,7 @@ const HUD = {
     $('hcN').textContent = d.name; $('hcT').textContent = d.title; $('vsH').textContent = d.name; $('ultLbl').textContent = d.ult.tag;
     const pf = document.querySelector('.portrait .pface'); if (pf) pf.innerHTML = heroGlyph(Hero.id);
   },
+  burstReady() { this.prompt('BURST READY · press when hit', 'block', 2.2); },
   flowReady() { this.prompt(Hero.def.ult.tag + ' READY', 'special', 2.2); },
   prompt(text, act, dur, keep) {
     this.promptText = text; this.promptAct = act;
@@ -9523,6 +9533,7 @@ const HUD = {
     this.hpLag = hpk < this.hpLag ? damp(this.hpLag, hpk, 3, dt) : hpk;
     e.hp.style.width = (hpk * 100) + '%'; e.hpLag.style.width = (this.hpLag * 100) + '%';
     e.flow.style.width = p.flow + '%';
+    const bu = p.burst || 0; if (this.lastBu !== Math.round(bu)) { this.lastBu = Math.round(bu); e.burst.style.setProperty('--k', bu + '%'); e.burst.classList.toggle('ready', bu >= 100); }
     const gk = (p.guard ?? GUARD_MAX) / GUARD_MAX;
     e.guard.style.width = (gk * 100) + '%';
     e.gbar.classList.toggle('full', gk >= 0.999 && p.state !== 'block'); e.gbar.classList.toggle('low', gk < 0.35); e.gbar.classList.toggle('broken', p.state === 'guardbreak');
@@ -9918,7 +9929,7 @@ const Moment = {
 const Pursuit = {
   // called by the player when a launching hit lands
   arm(p, tag) {
-    if (['finisher', 'counter', 'rush', 'pursuit', 'splat', 'skyfall'].includes(tag)) { p.pursuitT = 0.7; }
+    if (['finisher', 'counter', 'rush', 'pursuit', 'splat', 'skyfall', 'launcher'].includes(tag)) { p.pursuitT = 0.7; }
   },
   can(p) { return p.pursuitT > 0 && G.boss.alive && G.boss.state !== 'transition' && (p.pursuitN || 0) < 3 && ['move', 'attack', 'dash', 'rush'].includes(p.state); },
   start(p) {
@@ -10540,6 +10551,89 @@ const Guard = {
 
 'use strict';
 /* ============================================================
+   Stage 3 depth: element matchups, burst escape, projectile clashes,
+   directional launchers.
+   ============================================================ */
+// water quenches fire, fire eats wind, wind erodes earth, earth dams water
+const ELEM_BEATS = { water: 'fire', fire: 'wind', wind: 'earth', earth: 'water' };
+const ELEM_BONUS = 1.12;
+const elemMult = (att, def) => (ELEM_BEATS[att] === def ? ELEM_BONUS : 1);
+const PROJ_ELEM = { fireball: 'fire', firebolt: 'fire', gust: 'wind', lance: 'wind', boulder: 'earth', jet: 'water' };
+const PROJ_POW = { fireball: 1, firebolt: 1, gust: 1, lance: 2, boulder: 2, jet: 2 };
+
+/* back + strike: a rising launcher for every hero */
+const LAUNCHERS = {
+  wind: { w: 'upperW', s: 'upperF', dur: 0.5, a0: 0.11, a1: 0.2, dmg: 11, post: 8, reach: 1.3, r: 1.45, lunge: 6, cancel: 0.28, big: true, knock: 13, launcher: true, slash: { tilt: 1.5, y: 1.2 }, trail: 'R', pitch: 0.85, gust: false },
+  fire: { w: 'upperW', s: 'upperF', dur: 0.5, a0: 0.1, a1: 0.19, dmg: 11, post: 8, reach: 1.3, r: 1.45, lunge: 7, cancel: 0.28, big: true, knock: 13, launcher: true, slash: { tilt: 1.5, y: 1.2 }, trail: 'R', pitch: 0.85, elem: 'pillar' },
+  earth: { w: 'axeW', s: 'upperF', dur: 0.56, a0: 0.15, a1: 0.24, dmg: 13, post: 10, reach: 1.4, r: 1.5, lunge: 5, cancel: 0.32, big: true, armor: true, knock: 13, launcher: true, trail: 'B', pitch: 0.7, elem: 'rock' },
+  water: { w: 'whipW', s: 'upperF', dur: 0.5, a0: 0.11, a1: 0.2, dmg: 10, post: 8, reach: 2.0, r: 1.4, lunge: 5, cancel: 0.28, big: true, knock: 13, launcher: true, slash: { tilt: 1.5, y: 1.2 }, trail: 'R', pitch: 0.9, elem: 'splash' },
+};
+const launcherFor = id => LAUNCHERS[id] || LAUNCHERS.wind;
+// is the stick held away from the opponent?
+function backInput(p, wish, hasWish) {
+  const b = G.boss;
+  if (!hasWish || !b.alive || horizDist(p.pos, b.pos) > 8) return false;
+  const d = p.bossDir().normalize(), w = wish.clone().normalize();
+  return d.x * w.x + d.z * w.z < -0.55;
+}
+
+/* ---------------- burst: spend a full gauge to break out of a combo ---------------- */
+const Burst = {
+  can(p) { return p.alive && G.state === 'fight' && (p.burst || 0) >= 100 && (p.state === 'hit' || p.state === 'launched'); },
+  gain(p, n) {
+    const was = p.burst || 0; p.burst = Math.min(100, was + n);
+    if (was < 100 && p.burst >= 100) { Sfx.P('sfx_flow_full', 0.45) || Sfx.ting(2600); if (typeof HUD !== 'undefined' && HUD.burstReady) HUD.burstReady(); }
+  },
+  fire(p) {
+    p.burst = 0;
+    const air = !p.grounded;
+    Sfx.loopOff('sfx_charge_loop');
+    p.toMove(); p.invuln = 0.7; p.combo = 0;
+    if (air) { p.vel.set(0, 6, 0); p.jumps = 1; p.airDashes = 0; } else p.vel.set(0, 0, 0);
+    const c = p.chest();
+    FX.shockwave(c, 0.6, 2.2, 0.6); FX.groundRing(p.pos.clone().setY(0.06), 7, HC.aura, 0.45); FX.ringBill(c, 6, HC.pale, 0.3);
+    FX.burst(c, 60, { speed: 18, life: 0.5, s0: 0.45, c0: C.white, c1: C.wind });
+    FX.impactLines(c, 22, HC.glow, 5, 0.25);
+    FX.popup(c.clone().add(new V3(0, 1, 0)), 'BURST!', 'break', Render.camera);
+    Render.post.flash = 0.3; Render.post.aberr = 1.4; FX.shake(0.6); hitstop(0.08); Sfx.boom(1); Sfx.bigWhoosh();
+    G.stats.bursts = (G.stats.bursts || 0) + 1;
+    const b = G.boss;
+    if (b.alive && horizDist(p.pos, b.pos) < 5.5) {
+      const dir = new V3(b.pos.x - p.pos.x, 0, b.pos.z - p.pos.z).normalize();
+      if (!Duel.active && b.state === 'attack' && b.atk && !['nova', 'beam'].includes(b.atk.name)) { b.cancelAttack(); b.state = 'flinch'; b.st = -0.4; }
+      b.takeDamage(4, 12, b.chest(new V3()), dir, { big: true, knock: 12, src: 'burst' });
+    }
+  },
+};
+
+/* ---------------- projectiles meeting in mid-air ---------------- */
+const ProjClash = {
+  update() {
+    const L = G.proj;
+    for (const a of L) {
+      if (a.dead || a.owner !== 'player') continue;
+      for (const b of L) {
+        if (b.dead || (b.owner !== 'boss' && b.owner !== 'ghost') || b.reflected) continue;
+        if (a.pos.distanceTo(b.pos) > a.r + b.r + 0.25) continue;
+        const ea = PROJ_ELEM[a.kind], eb = PROJ_ELEM[b.kind], pa = PROJ_POW[a.kind] || 1, pb = PROJ_POW[b.kind] || 1;
+        const w = pa > pb ? 1 : pb > pa ? -1 : ELEM_BEATS[ea] === eb ? 1 : ELEM_BEATS[eb] === ea ? -1 : 0;
+        const at = a.pos.clone().lerp(b.pos, 0.5);
+        FX.star(at, 3.5, 0xffffff, 0.18); FX.shockwave(at, 0.35, 1); FX.impactLines(at, 14, 0xffffff, 3, 0.18);
+        FX.burst(at, 30, { speed: 12, life: 0.4, s0: 0.35, c0: C.white, c1: w < 0 ? C.ember : C.wind });
+        Sfx.P('sfx_clash', 0.6) || Sfx.deflect(); hitstop(0.05); FX.shake(0.25);
+        FX.popup(at.clone().add(new V3(0, 0.6, 0)), w > 0 ? 'OVERPOWER' : w < 0 ? 'OVERPOWERED' : 'CLASH', 'tag small', Render.camera);
+        G.stats.clashes = (G.stats.clashes || 0) + 1;
+        if (w >= 0) b.explode(); else b.dmg = Math.max(1, Math.round(b.dmg * 0.6));
+        if (w <= 0) { a.explode(); break; }
+        a.dmg = Math.max(1, Math.round(a.dmg * 0.6));
+        G.player.gainFlow(4);
+      }
+    }
+  },
+};
+
+'use strict';
+/* ============================================================
    Hero select: browse the four fighters on the live 3D model
    ============================================================ */
 const Select = {
@@ -10739,9 +10833,9 @@ const Opp = {
     const ps = this.puppet.state;
     if (ps === 'special' || ps === 'dead') return null;
     const p = G.player;
-    const mult = (p.awake ? 1.3 : 1) * (o.src === 'burn' ? 1 : Hero.def.stats.dmg) * PVP_SCALE;
+    const mult = (p.awake ? 1.3 : 1) * (o.src === 'burn' ? 1 : Hero.def.stats.dmg) * PVP_SCALE * elemMult(Hero.id, this.def.id);
     const d = Math.max(1, Math.round(dmg * mult));
-    const k = o.src === 'burn' ? 'chip' : o.pull ? 'pull' : o.spike ? 'spike' : o.src === 'special' && o.noFlinch ? 'held' : o.big && (o.knock || 0) >= 9 ? 'launch' : o.big ? 'heavy' : 'light';
+    const k = o.src === 'burn' ? 'chip' : o.src === 'burst' ? 'burst' : o.pull ? 'pull' : o.spike ? 'spike' : o.src === 'special' && o.noFlinch ? 'held' : o.big && (o.knock || 0) >= 9 ? 'launch' : o.big ? 'heavy' : 'light';
     Duel.send({ t: 'hit', d, k, dir: [r3(dir.x), r3(dir.z)] });
     this.hp = Math.max(0, this.hp - d); this.puppet.hp = this.hp;
     return { dmg: d, broke: false };
@@ -10823,7 +10917,7 @@ const Duel = {
           return;
         }
         // both strikes landed in the same instant: clash instead of trading damage
-        if (m.k !== 'held' && p.state === 'attack' && p.move && p.st >= p.move.a0 - 0.05 && p.st <= p.move.a1 + 0.06) {
+        if (m.k !== 'held' && m.k !== 'burst' && p.state === 'attack' && p.move && p.st >= p.move.a0 - 0.05 && p.st <= p.move.a1 + 0.06) {
           const at = p.chest().lerp(Opp.chest(), 0.5), f = Opp.pos.clone().sub(p.pos).setY(0).normalize();
           this.send({ t: 'clash', at: [r3(at.x), r3(at.y), r3(at.z)] }); duelClash(at, f); return;
         }
@@ -10891,6 +10985,8 @@ const Duel = {
     Cam.cine = null; Cam.snapBehind();
     G.state = 'fight'; Sfx.intensity = 1;
     HUD.banner('DUEL', 'fight'); Sfx.boom(0.6);
+    const adv = elemMult(Hero.id, Opp.def.id) > 1 ? 'ELEMENT ADVANTAGE ▲' : elemMult(Opp.def.id, Hero.id) > 1 ? 'ELEMENT DISADVANTAGE ▼' : '';
+    if (adv) setTimeout(() => { if (this.active) FX.popup(G.player.chest().add(new V3(0, 1.1, 0)), adv, 'tag', Render.camera); }, 900);
     G.stats.time = 0;
     Input.lock();
   },
@@ -11103,12 +11199,14 @@ const BotAI = {
       }
     }
     // knocked into the air: air recovery
+    if (Burst.can(p) && Math.random() < D.recover * raw * 4) { a.block = true; return a; }
     if (p.state === 'launched') { if (p.st > 0.2 && Math.random() < D.recover * raw * 5) a.dash = true; return a; }
     if (p.state === 'down') { if (Math.random() < D.recover * raw * 6) a.jump = true; return a; }
     // ---- offence
     if (p.flow >= 100 && dist < 9 && Math.random() < D.ult * raw * 2) { a.special = true; return a; }
     this.strafeT -= raw; if (this.strafeT <= 0) { this.strafeT = rand(1.2, 2.6); this.strafe = Math.random() < 0.5 ? 1 : -1; }
     // the human is launched: chase into the air
+    if (os === 'launched' && p.pursuitT > 0 && Math.random() < D.chase) { a.dash = true; return a; }
     if (os === 'launched' && dist < 6 && Math.random() < D.chase * raw * 4) {
       if (p.grounded) { a.jump = true; this.steer(a, ux, uz); return a; }
       a.light = true; this.steer(a, ux, uz); return a;
@@ -11136,7 +11234,9 @@ const BotAI = {
     if (this.pressT <= 0 && (p.state === 'move' || p.state === 'attack')) {
       this.pressT = rand(0.16, 0.26);
       this.steer(a, ux, uz);
-      if (this.useHeavy && this.comboLeft === 1) a.heavy = true; else a.light = true;
+      if (this.useHeavy && this.comboLeft === 1) a.heavy = true;
+      else if (this.comboLeft === 1 && Math.random() < D.air) { a.light = true; this.steer(a, -ux, -uz); }
+      else a.light = true;
       this.comboLeft--;
       if (this.comboLeft <= 0) this.nextAtk = t + rand(D.pause[0], D.pause[1]);
     }
@@ -11981,6 +12081,7 @@ function main() {
       else { Duel.mirror = Duel.active; G.player.update(pdt, a); Duel.mirror = false; G.boss.update(Duel.active ? sim : bdt); }
       Duel.tick(raw);
       for (const p of G.proj) { p.update(p.owner === 'boss' ? bdt : pdt, Render.camera); if (!p.dead && p.owner === 'boss') Graze.check(p, G.player); }
+      ProjClash.update();
       for (let i = G.proj.length - 1; i >= 0; i--) if (G.proj[i].dead) G.proj.splice(i, 1);
       // wind cancels fire: player projectiles destroy fireballs
       for (const p of G.proj) if (p.owner === 'player' && !p.dead && p.kind !== 'fireball') for (const q of G.proj) if (q.owner === 'boss' && !q.dead && p.pos.distanceTo(q.pos) < p.r + q.r) { q.explode(); Sfx.deflect(); G.player.gainFlow(4); }
@@ -12023,5 +12124,5 @@ window.addEventListener('load', () => {
 });
 
 </script>
-<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1115-2127</div></body>
+<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1115-2136</div></body>
 </html>

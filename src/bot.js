@@ -133,12 +133,14 @@ const BotAI = {
       }
     }
     // knocked into the air: air recovery
+    if (Burst.can(p) && Math.random() < D.recover * raw * 4) { a.block = true; return a; }
     if (p.state === 'launched') { if (p.st > 0.2 && Math.random() < D.recover * raw * 5) a.dash = true; return a; }
     if (p.state === 'down') { if (Math.random() < D.recover * raw * 6) a.jump = true; return a; }
     // ---- offence
     if (p.flow >= 100 && dist < 9 && Math.random() < D.ult * raw * 2) { a.special = true; return a; }
     this.strafeT -= raw; if (this.strafeT <= 0) { this.strafeT = rand(1.2, 2.6); this.strafe = Math.random() < 0.5 ? 1 : -1; }
     // the human is launched: chase into the air
+    if (os === 'launched' && p.pursuitT > 0 && Math.random() < D.chase) { a.dash = true; return a; }
     if (os === 'launched' && dist < 6 && Math.random() < D.chase * raw * 4) {
       if (p.grounded) { a.jump = true; this.steer(a, ux, uz); return a; }
       a.light = true; this.steer(a, ux, uz); return a;
@@ -166,7 +168,9 @@ const BotAI = {
     if (this.pressT <= 0 && (p.state === 'move' || p.state === 'attack')) {
       this.pressT = rand(0.16, 0.26);
       this.steer(a, ux, uz);
-      if (this.useHeavy && this.comboLeft === 1) a.heavy = true; else a.light = true;
+      if (this.useHeavy && this.comboLeft === 1) a.heavy = true;
+      else if (this.comboLeft === 1 && Math.random() < D.air) { a.light = true; this.steer(a, -ux, -uz); }
+      else a.light = true;
       this.comboLeft--;
       if (this.comboLeft <= 0) this.nextAtk = t + rand(D.pause[0], D.pause[1]);
     }

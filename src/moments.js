@@ -43,7 +43,7 @@ const Moment = {
 const Pursuit = {
   // called by the player when a launching hit lands
   arm(p, tag) {
-    if (['finisher', 'counter', 'rush', 'pursuit', 'splat', 'skyfall'].includes(tag)) { p.pursuitT = 0.7; }
+    if (['finisher', 'counter', 'rush', 'pursuit', 'splat', 'skyfall', 'launcher'].includes(tag)) { p.pursuitT = 0.7; }
   },
   can(p) { return p.pursuitT > 0 && G.boss.alive && G.boss.state !== 'transition' && (p.pursuitN || 0) < 3 && ['move', 'attack', 'dash', 'rush'].includes(p.state); },
   start(p) {

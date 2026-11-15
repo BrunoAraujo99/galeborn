@@ -245,6 +245,8 @@ body.awake .portrait, body.awake #flowRingFg { filter: drop-shadow(0 0 8px #5ff0
 /* player panel */
 #pbars { display: flex; align-items: center; gap: 12px; width: min(440px, calc(100% - 32px)); }
 .portrait { position: relative; width: 78px; height: 78px; flex: none; }
+#pburst { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%) skewX(-12deg); z-index: 2; padding: 1px 6px; font-size: 9px; font-weight: 900; letter-spacing: .16em; color: #8a8f9a; border: 1px solid #000; background: linear-gradient(90deg, rgba(255,255,255,.28) var(--k, 0%), rgba(10,8,15,.85) var(--k, 0%)); white-space: nowrap; }
+#pburst.ready { color: #fff; background: linear-gradient(90deg, #ff4a6a, #ffb040); box-shadow: 0 0 10px #ff6a4a; animation: ringglow .5s infinite alternate; }
 .portrait .ring { position: absolute; inset: 0; transform: rotate(-90deg); }
 .ring-bg { fill: none; stroke: rgba(10,8,18,.8); stroke-width: 7; }
 .ring-fg { fill: none; stroke: #2fd8ff; stroke-width: 7; stroke-dasharray: 213.6; stroke-dashoffset: 213.6; stroke-linecap: round; transition: stroke-dashoffset .15s; filter: drop-shadow(0 0 4px #2fd8ff); }
@@ -321,6 +323,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
   <div id="pbars">
     <div class="portrait">
       <svg class="ring" viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" class="ring-bg"/><circle cx="40" cy="40" r="34" class="ring-fg" id="flowRingFg"/></svg>
+      <div id="pburst"><span>BURST</span></div>
       <svg class="pface" viewBox="0 0 60 60"><circle cx="30" cy="30" r="24" fill="#10213a"/><path d="M14 34 C14 20 30 14 40 20 C46 24 44 33 36 33 C30 33 29 26 34 25" fill="none" stroke="#7ff6ec" stroke-width="3.5" stroke-linecap="round"/><path d="M18 42 C26 46 40 44 46 36" fill="none" stroke="#2fb8ff" stroke-width="3" stroke-linecap="round"/></svg>
     </div>
     <div class="pmain">
@@ -375,6 +378,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
   <div><b>Gale (hold)</b><span class="ic" data-act="heavy"></span></div><div><b>Gale Rush</b><span class="ic" data-act="dash"></span><i class="or">then</i><span class="ic" data-act="light"></span></div>
   <div><b>Dive slam</b><i class="or">in air</i><span class="ic" data-act="heavy"></span></div><div><b>Tempest</b><span class="ic" data-act="special"></span></div>
   <div><b>Lock-on</b><span class="ic" data-act="lock"></span></div><div><b>Recover</b><i class="or">when launched</i><span class="ic" data-act="dash"></span></div>
+  <div><b>Launcher</b><i class="or">back +</i><span class="ic" data-act="light"></span></div><div><b>Burst</b><i class="or">when hit, gauge full</i><span class="ic" data-act="block"></span></div>
   <div><b>Block</b><span class="ic" data-act="block"></span></div><div><b>Parry</b><i class="or">tap just before a hit</i><span class="ic" data-act="block"></span></div>
   <div><b>Pause</b><span class="ic" data-act="pause"></span></div><div><b>Mute / help</b><span class="ic" data-act="mute"></span><span class="ic" data-act="help"></span></div>
 </div>

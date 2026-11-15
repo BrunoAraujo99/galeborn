@@ -76,7 +76,7 @@ const FLOW_C = 2 * Math.PI * 34;
 const HUD = {
   init() {
     this.el = {
-      hp: $('php'), hpLag: $('phplag'), flow: $('pflow'), flowBox: $('pbars'), bhp: $('bhp'), bhpLag: $('bhplag'), post: $('bpost'), bbar: $('bossbar'), pbar: $('pbar'), gbar: $('pgbar'), guard: $('pguard'),
+      hp: $('php'), hpLag: $('phplag'), flow: $('pflow'), flowBox: $('pbars'), bhp: $('bhp'), bhpLag: $('bhplag'), post: $('bpost'), bbar: $('bossbar'), pbar: $('pbar'), gbar: $('pgbar'), guard: $('pguard'), burst: $('pburst'),
       combo: $('combo'), comboN: $('comboN'), comboR: $('comboR'), comboD: $('comboD'), banner: $('banner'), reticle: $('reticle'), hud: $('hud'), bossbar: $('bossbar'),
       lockTag: $('locktag'), ring: $('flowRingFg'), prompt: $('prompt'), sub: $('subtitle'), pip2: $('pip2'), postRow: $('postRow'),
     };
@@ -93,6 +93,7 @@ const HUD = {
     $('hcN').textContent = d.name; $('hcT').textContent = d.title; $('vsH').textContent = d.name; $('ultLbl').textContent = d.ult.tag;
     const pf = document.querySelector('.portrait .pface'); if (pf) pf.innerHTML = heroGlyph(Hero.id);
   },
+  burstReady() { this.prompt('BURST READY · press when hit', 'block', 2.2); },
   flowReady() { this.prompt(Hero.def.ult.tag + ' READY', 'special', 2.2); },
   prompt(text, act, dur, keep) {
     this.promptText = text; this.promptAct = act;
@@ -119,6 +120,7 @@ const HUD = {
     this.hpLag = hpk < this.hpLag ? damp(this.hpLag, hpk, 3, dt) : hpk;
     e.hp.style.width = (hpk * 100) + '%'; e.hpLag.style.width = (this.hpLag * 100) + '%';
     e.flow.style.width = p.flow + '%';
+    const bu = p.burst || 0; if (this.lastBu !== Math.round(bu)) { this.lastBu = Math.round(bu); e.burst.style.setProperty('--k', bu + '%'); e.burst.classList.toggle('ready', bu >= 100); }
     const gk = (p.guard ?? GUARD_MAX) / GUARD_MAX;
     e.guard.style.width = (gk * 100) + '%';
     e.gbar.classList.toggle('full', gk >= 0.999 && p.state !== 'block'); e.gbar.classList.toggle('low', gk < 0.35); e.gbar.classList.toggle('broken', p.state === 'guardbreak');

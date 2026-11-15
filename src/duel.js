@@ -81,9 +81,9 @@ const Opp = {
     const ps = this.puppet.state;
     if (ps === 'special' || ps === 'dead') return null;
     const p = G.player;
-    const mult = (p.awake ? 1.3 : 1) * (o.src === 'burn' ? 1 : Hero.def.stats.dmg) * PVP_SCALE;
+    const mult = (p.awake ? 1.3 : 1) * (o.src === 'burn' ? 1 : Hero.def.stats.dmg) * PVP_SCALE * elemMult(Hero.id, this.def.id);
     const d = Math.max(1, Math.round(dmg * mult));
-    const k = o.src === 'burn' ? 'chip' : o.pull ? 'pull' : o.spike ? 'spike' : o.src === 'special' && o.noFlinch ? 'held' : o.big && (o.knock || 0) >= 9 ? 'launch' : o.big ? 'heavy' : 'light';
+    const k = o.src === 'burn' ? 'chip' : o.src === 'burst' ? 'burst' : o.pull ? 'pull' : o.spike ? 'spike' : o.src === 'special' && o.noFlinch ? 'held' : o.big && (o.knock || 0) >= 9 ? 'launch' : o.big ? 'heavy' : 'light';
     Duel.send({ t: 'hit', d, k, dir: [r3(dir.x), r3(dir.z)] });
     this.hp = Math.max(0, this.hp - d); this.puppet.hp = this.hp;
     return { dmg: d, broke: false };
@@ -165,7 +165,7 @@ const Duel = {
           return;
         }
         // both strikes landed in the same instant: clash instead of trading damage
-        if (m.k !== 'held' && p.state === 'attack' && p.move && p.st >= p.move.a0 - 0.05 && p.st <= p.move.a1 + 0.06) {
+        if (m.k !== 'held' && m.k !== 'burst' && p.state === 'attack' && p.move && p.st >= p.move.a0 - 0.05 && p.st <= p.move.a1 + 0.06) {
           const at = p.chest().lerp(Opp.chest(), 0.5), f = Opp.pos.clone().sub(p.pos).setY(0).normalize();
           this.send({ t: 'clash', at: [r3(at.x), r3(at.y), r3(at.z)] }); duelClash(at, f); return;
         }
@@ -233,6 +233,8 @@ const Duel = {
     Cam.cine = null; Cam.snapBehind();
     G.state = 'fight'; Sfx.intensity = 1;
     HUD.banner('DUEL', 'fight'); Sfx.boom(0.6);
+    const adv = elemMult(Hero.id, Opp.def.id) > 1 ? 'ELEMENT ADVANTAGE ▲' : elemMult(Opp.def.id, Hero.id) > 1 ? 'ELEMENT DISADVANTAGE ▼' : '';
+    if (adv) setTimeout(() => { if (this.active) FX.popup(G.player.chest().add(new V3(0, 1.1, 0)), adv, 'tag', Render.camera); }, 900);
     G.stats.time = 0;
     Input.lock();
   },

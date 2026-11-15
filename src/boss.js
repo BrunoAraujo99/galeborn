@@ -51,7 +51,7 @@ class Boss {
 
   takeDamage(dmg, post, point, dir, o = {}) {
     if (!this.alive || this.state === 'transition' || this.state === 'intro') return null;
-    const mult = (this.state === 'stagger' ? 1.5 : 1) * (G.player.awake ? 1.3 : 1) * (o.src === 'burn' ? 1 : Hero.def.stats.dmg);
+    const mult = (this.state === 'stagger' ? 1.5 : 1) * (G.player.awake ? 1.3 : 1) * (o.src === 'burn' ? 1 : Hero.def.stats.dmg) * elemMult(Hero.id, 'fire');
     const d = Math.max(1, Math.round(dmg * mult * rand(0.92, 1.08)));
     this.hp -= d;
     this.flash = 1;

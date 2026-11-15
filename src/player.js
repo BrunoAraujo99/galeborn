@@ -22,7 +22,7 @@ class Player {
     this.state = 'move'; this.st = 0; this.grounded = true; this.jumps = 0; this.airDashes = 0; this.airHits = 0;
     this.comboIdx = 0; this.comboT = 0; this.buf = null; this.bufT = 0;
     this.invuln = 0; this.dodgeInv = 0; this.perfectWin = 0; this.perfectUsed = false; this.counterT = 0;
-    this.guard = GUARD_MAX; this.guardRegenT = 0; this.blockCd = 0; this.blockStunT = 0; this.parryUsed = false; this.blockHeld = false;
+    this.guard = GUARD_MAX; this.guardRegenT = 0; this.blockCd = 0; this.blockStunT = 0; this.parryUsed = false; this.blockHeld = false; this.burst = 0;
     this.move = null; this.moveHit = false; this.ghostT = 0; this.runPh = 0; this.chargeLv = 0;
     this.combo = 0; this.comboTimer = 0; this.alive = true; this.hurtFlash = 0;
     this.rig.root.position.copy(this.pos); this.rig.root.rotation.set(0, this.yaw, 0);
@@ -79,6 +79,7 @@ class Player {
     const wish = this.wishDir(a);
     const hasWish = wish.lengthSq() > 0.01;
     Guard.update(this, dt);
+    if (this.buf === 'block' && Burst.can(this)) { this.buf = null; Burst.fire(this); }
     const S = this.state;
 
     if (S === 'move') this.updMove(dt, a, wish, hasWish);
@@ -132,6 +133,7 @@ class Player {
     }
     if (this.take('light')) {
       if (this.counterT > 0 && G.boss.alive) return this.startCounter();
+      if (g && backInput(this, wish, hasWish)) return this.startAttack(launcherFor(Hero.id), false, wish, hasWish);
       if (g) { if (this.comboT <= 0) this.comboIdx = 0; return this.startAttack(this.ms.light[this.comboIdx % this.ms.light.length], false, wish, hasWish); }
       if (this.airHits < this.ms.air.length) return this.startAttack(this.ms.air[this.airHits], true, wish, hasWish);
     }
@@ -316,7 +318,7 @@ class Player {
     this.lungeV = lv;
     if (air) { this.airHits++; this.vel.y = Math.max(this.vel.y * 0.2, 2.5); }
     if (!Sfx.el(m.big || m.finisher ? 'swing_heavy' : 'swing_light', 0.7)) Sfx.whoosh(m.pitch || 1, 0.42);
-    if (!air && !m.counter) this.comboIdx = (this.comboIdx + 1) % this.ms.light.length;
+    if (!air && !m.counter && !m.launcher) this.comboIdx = (this.comboIdx + 1) % this.ms.light.length;
     this.comboT = m.dur + 0.4;
   }
   startCounter() {
@@ -381,8 +383,10 @@ class Player {
       this.tryDeflect(c, m.r);
     }
     // cancels
-    if (t >= m.cancel) {
+    // landing a hit opens the cancel window early
+    if (t >= (this.moveHit ? Math.min(m.cancel, m.a1 + 0.03) : m.cancel)) {
       if (this.buf === 'light') {
+        if (!this.moveAir && this.grounded && !m.launcher && !m.counter && backInput(this, wish, wish.lengthSq() > 0.01)) { this.buf = null; return this.startAttack(launcherFor(Hero.id), false, wish, true); }
         if (this.counterT > 0 && G.boss.alive) { this.buf = null; return this.startCounter(); }
         if (!this.moveAir && this.grounded && !m.counter) { this.buf = null; return this.startAttack(this.ms.light[this.comboIdx % this.ms.light.length], false, wish, wish.lengthSq() > 0.01); }
         if (this.moveAir && this.airHits < this.ms.air.length) { this.buf = null; return this.startAttack(this.ms.air[this.airHits], true, wish, wish.lengthSq() > 0.01); }
@@ -409,7 +413,7 @@ class Player {
       const hdir = m.pull ? new V3(this.pos.x - b.pos.x, 0, this.pos.z - b.pos.z).normalize() : m.aoe ? new V3(b.pos.x - this.pos.x, 0, b.pos.z - this.pos.z).normalize() : fwd.clone();
       if (m.spike && !b.grounded) hdir.y = -1;
       const res = b.takeDamage(m.dmg * (sky ? 1.8 : 1), m.post * (sky ? 2 : 1), hp, hdir, { big: m.big || sky, src: 'melee', counter: m.counter, pull: m.pull, spike: m.spike, knock: sky ? 14 : m.counter ? 11 : m.pull ? m.pull : m.knock != null ? m.knock : m.finisher ? 15 : null });
-      if (res) this.onDealtHit(res, hp, fwd, m.big || sky, sky ? 0.14 : m.counter ? 0.16 : m.big ? 0.1 : 0.06, sky ? 'skyfall' : m.counter ? 'counter' : m.finisher ? 'finisher' : '');
+      if (res) this.onDealtHit(res, hp, fwd, m.big || sky, sky ? 0.14 : m.counter ? 0.16 : m.big ? 0.1 : 0.06, sky ? 'skyfall' : m.counter ? 'counter' : m.finisher ? 'finisher' : m.launcher ? 'launcher' : '');
       if (res && sky) Moment.fire('SKYFALL', 'PILLAR VAULT → AIR STRIKE', hp, fwd, 2);
     }
   }
@@ -439,14 +443,14 @@ class Player {
       FX.fovKick -= 6; FX.shockwave(point, 0.45, 1.2); FX.sfxWord(point, false);
       Cam.dutch((Math.random() < 0.5 ? -1 : 1) * 0.07);
     } else FX.fovKick -= 1.2;
-    const label = { counter: 'COUNTER', finisher: 'FINISHER', splat: 'WALL SPLAT', slam: 'CRASH', reflect: 'RETURN', rush: 'GALE RUSH', pursuit: 'PURSUIT', skyfall: 'SKYFALL', topple: 'TOPPLE' }[tag] || '';
+    const label = { counter: 'COUNTER', finisher: 'FINISHER', splat: 'WALL SPLAT', slam: 'CRASH', reflect: 'RETURN', rush: 'GALE RUSH', pursuit: 'PURSUIT', skyfall: 'SKYFALL', topple: 'TOPPLE', launcher: 'LAUNCH' }[tag] || '';
     FX.dmgNumber(point, res.dmg, tag === 'counter' || tag === 'splat' ? 'gold' : big ? 'big' : '', label);
     if (tag === 'counter' || tag === 'finisher' || tag === 'splat') {
       Cam.impactShot(point, dir, tag === 'splat' ? 0.9 : 0.7);
       slowmo(0.22, tag === 'counter' ? 0.5 : 0.38);
       FX.shockwave(point, 0.7, 1.6, 0.6);
     }
-    this.gainFlow(big ? 6 : 3.5);
+    this.gainFlow(big ? 6 : 3.5); Burst.gain(this, big ? 3 : 1.5);
     this.combo++; this.comboTimer = 2.2; this.comboDmg = (this.combo === 1 ? 0 : (this.comboDmg || 0)) + res.dmg;
     G.stats.maxCombo = Math.max(G.stats.maxCombo, this.combo);
     if (res.broke) this.gainFlow(15);
@@ -655,8 +659,9 @@ class Player {
       return 'dodged';
     }
     if (this.invuln > 0) return 'immune';
-    const gr = Guard.check(this, dmg, dir, kind, src);
+    const gr = kind === 'burst' ? '' : Guard.check(this, dmg, dir, kind, src);
     if (gr) return gr;
+    if (kind === 'burst') kind = 'heavy';
     if (this.state === 'guardbreak') dmg = Math.round(dmg * 1.25);
     if (Kit.armored(this) && kind !== 'launch' && this.hp > dmg * 0.5) {
       // stoneskin: take half, keep swinging
@@ -664,7 +669,7 @@ class Player {
       FX.dmgNumber(this.chest(), dmg, 'hurt', 'ARMOR'); FX.burst(this.chest(), 12, { speed: 6, life: 0.4, s0: 0.4, c0: C.dust, c1: C.dust, add: false, alpha: 0.6 }); FX.shake(0.3); Sfx.hit(1.2);
       return 'hit';
     }
-    this.hp -= dmg; this.hurtFlash = 1;
+    this.hp -= dmg; this.hurtFlash = 1; Burst.gain(this, src === 'pvp' ? dmg * 4.5 : dmg * 0.9);
     G.stats.dmgTaken += dmg;
     this.combo = 0; this.counterT = 0;
     for (const k in this.trails) this.trails[k].emit = false;
