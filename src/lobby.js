@@ -30,7 +30,7 @@ const Lobby = {
     try {
       const me = await Api.ensure(this.defaultName());
       $('lbName').value = me.name;
-      $('lbMe').textContent = `Rating ${me.rating} · #${me.rank} · ${me.wins}W ${me.losses}L`;
+      $('lbMe').innerHTML = `${tierTag(me.rating)} · Rating ${me.rating} · #${me.rank} · ${me.wins}W ${me.losses}L`;
     } catch (e) { this.status('Can\'t reach the Galeborn server. You can still fight a bot offline.', true); return this.set(this.botButtons()); }
     if (mode === 'ranked') return this.search();
     if (this.pendingRoom) { const c = this.pendingRoom; this.pendingRoom = null; return this.join(c); }
@@ -119,8 +119,8 @@ const Lobby = {
     try {
       const rows = await Api.leaderboard(50);
       let me = null; if (Api.token) me = await Api.ensure().catch(() => null);
-      $('boardBody').innerHTML = (rows.length ? `<table><tr><th>#</th><th>Name</th><th>Rating</th><th>W</th><th>L</th></tr>${rows.map((r, i) => `<tr class="${me && r.name === me.name && r.rating === me.rating ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.name)}</td><td>${r.rating}</td><td>${r.wins}</td><td>${r.losses}</td></tr>`).join('')}</table>` : '<p>No ranked duels yet. Be the first.</p>')
-        + (me ? `<p class="boardMe">You: ${esc(me.name)} · ${me.rating} · #${me.rank}</p>` : '');
+      $('boardBody').innerHTML = (rows.length ? `<table><tr><th>#</th><th>Name</th><th>Tier</th><th>Rating</th><th>W</th><th>L</th></tr>${rows.map((r, i) => `<tr class="${me && r.name === me.name && r.rating === me.rating ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.name)}</td><td>${tierTag(r.rating)}</td><td>${r.rating}</td><td>${r.wins}</td><td>${r.losses}</td></tr>`).join('')}</table>` : '<p>No ranked duels yet. Be the first.</p>')
+        + (me ? `<p class="boardMe">You: ${esc(me.name)} · ${tierTag(me.rating)} ${me.rating} · #${me.rank}</p>` : '');
     } catch (e) { $('boardBody').innerHTML = '<p>Can\'t reach the Galeborn server.</p>'; }
   },
 };

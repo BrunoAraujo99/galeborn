@@ -742,7 +742,9 @@ class Player {
     if (this.vel.y < -40) this.vel.y = -40;
     const vyBefore = this.vel.y;
     this.pos.addScaledVector(this.vel, dt);
-    if (this.pos.y <= 0) {
+    const offEdge = Duel.active && Math.hypot(this.pos.x, this.pos.z) > ARENA_R + 2.1;
+    if (offEdge && this.alive && this.pos.y < -7) return this.ringOut();
+    if (this.pos.y <= 0 && !offEdge) {
       this.pos.y = 0;
       if (!this.grounded) {
         this.grounded = true; this.jumps = 0; this.airDashes = 0; this.airHits = 0;
@@ -767,7 +769,16 @@ class Player {
   }
   clampArena() {
     const r = Math.hypot(this.pos.x, this.pos.z), R = ARENA_R - 0.6;
-    if (r > R) { this.pos.x *= R / r; this.pos.z *= R / r; }
+    if (r <= R) return;
+    // in a duel a launched fighter can fly off the terrace: ring out
+    if (Duel.active && G.state === 'fight' && (this.state === 'launched' || this.state === 'dead' || r > ARENA_R + 2.1)) return;
+    if (Duel.active && r < ARENA_R + 2.1 && this.state !== 'move' && this.state !== 'dash') { const k = Math.max(R, r - 8 * (1 / 60)) / r; this.pos.x *= k; this.pos.z *= k; return; }
+    this.pos.x *= R / r; this.pos.z *= R / r;
+  }
+  ringOut() {
+    this.hp = 0; this.alive = false; this.state = 'dead'; this.st = 0; Sfx.loopOff('sfx_charge_loop');
+    FX.popup(this.chest().add(new V3(0, 2, 0)), 'RING OUT', 'break', Render.camera); Sfx.bigWhoosh();
+    G.onDefeat('RING OUT');
   }
   // pick a real animation clip for the model when one fits the state better than the procedural pose
   clipReq() {

@@ -1,0 +1,50 @@
+const { chromium } = require('playwright');
+(async () => {
+  const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const errs = [];
+  const mk = async (tag) => {
+    const page = await browser.newPage({ viewport: { width: 800, height: 450 } });
+    page.on('console', m => { if (m.type() === 'error' || m.type()==='warning') errs.push(tag + ' ' + m.type() + ': ' + m.text()); });
+    page.on('pageerror', e => errs.push(tag + ' PAGEERR: ' + e.message + ' ' + e.stack));
+    await page.goto('file:///home/claude/duel/dist/galeborn.html');
+    await page.waitForFunction(() => window.__G && __G.player && __G.player.rig.model, null, { timeout: 90000 });
+    await page.evaluate(() => Quality.set('low'));
+    return page;
+  };
+  const A = await mk('A'), B = await mk('B');
+  await A.exposeFunction('__netOut', m => B.evaluate(m => window.__netIn && window.__netIn(m), m).catch(() => {}));
+  await B.exposeFunction('__netOut', m => A.evaluate(m => window.__netIn && window.__netIn(m), m).catch(() => {}));
+  const setHero = (pg, id) => pg.evaluate(id => new Promise(r => G.setHero(id, r)), id);
+  await setHero(A, 'wind'); await setHero(B, 'water');
+  await A.evaluate(() => Duel.begin({ id: 't7', kind: 'friend', side: 1, me_hero: 'wind', opp: { id: 'b', name: 'BOBBY', hero: 'water' }, test: true }, TestLink));
+  await B.evaluate(() => Duel.begin({ id: 't7', kind: 'friend', side: 2, me_hero: 'water', opp: { id: 'a', name: 'ALICE', hero: 'wind' }, test: true }, TestLink));
+  await A.waitForFunction(() => Duel.started, null, { timeout: 60000 }); await B.waitForFunction(() => Duel.started, null, { timeout: 60000 });
+  const st = pg => pg.evaluate(() => `round=${Duel.round} wins=${Duel.wins} started=${Duel.started} ended=${Duel.ended} done=${Duel.matchDone} gs=${G.state} arena=${Arena.id} rounds="${$('rounds').textContent}" end=${$('endPanel').className} hp=${Math.round(__G.player.hp)}`);
+  console.log('A', await st(A)); console.log('B', await st(B));
+  const koB = () => B.evaluate(() => { const p = __G.player; p.invuln = 0; p.dodgeInv = 0; p.hp = 1; p.tryHit(50, new THREE.Vector3(0, 0, 1), 'heavy', 'pvp'); });
+  await koB(); await A.waitForTimeout(1500);
+  console.log('after KO1 A', await st(A)); console.log('after KO1 B', await st(B));
+  await A.waitForFunction(() => Duel.started && Duel.round === 2, null, { timeout: 60000 }); await B.waitForFunction(() => Duel.started && Duel.round === 2, null, { timeout: 60000 });
+  console.log('round2 A', await st(A)); console.log('round2 B', await st(B));
+  await A.screenshot({ path: '/tmp/claude-0/shots/r_A2.png' });
+  // ring out: throw B off the edge
+  await B.evaluate(() => { const p = __G.player; p.pos.set(0, 0.5, 25); p.state = 'launched'; p.st = 0; p.grounded = false; p.vel.set(0, 6, 9); });
+  await A.waitForTimeout(4000);
+  console.log('ringout A', await st(A), await A.evaluate(() => $('banner').textContent)); console.log('ringout B', await st(B));
+  await A.waitForFunction(() => Duel.matchDone && $('endPanel').classList.contains('show'), null, { timeout: 30000 }).catch(() => {});
+  console.log('end A', await st(A), await A.evaluate(() => $('endTitle').textContent + ' ' + $('retryBtn').textContent + ' | ' + $('endStats').textContent));
+  await B.waitForFunction(() => $('endPanel').classList.contains('show'), null, { timeout: 30000 }).catch(() => {});
+  console.log('end B', await st(B), await B.evaluate(() => $('endTitle').textContent));
+  await A.screenshot({ path: '/tmp/claude-0/shots/r_end.png' });
+  // rematch
+  await A.click('#retryBtn'); await A.waitForTimeout(500);
+  console.log('A waiting', await A.evaluate(() => $('retryBtn').textContent), 'B sees', await B.evaluate(() => $('retryBtn').textContent));
+  await B.click('#retryBtn');
+  await A.waitForFunction(() => Duel.started && Duel.round === 1, null, { timeout: 60000 }).catch(() => {});
+  await B.waitForFunction(() => Duel.started && Duel.round === 1, null, { timeout: 60000 }).catch(() => {});
+  console.log('rematch A', await st(A)); console.log('rematch B', await st(B));
+  await A.waitForTimeout(8000);
+  console.log('vents', await A.evaluate(() => Arena.vents.length + ' cycle=' + Arena.cycle));
+  console.log('ERRORS\n' + errs.filter(e => !/deprecated|GPU stall|WebGL|TUNNEL|ERR_/.test(e)).slice(0, 20).join('\n'));
+  await browser.close();
+})();

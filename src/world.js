@@ -47,7 +47,7 @@ const World = {
     // arena dais
     const tex = this.arenaTexture();
     const top = new THREE.Mesh(new THREE.CylinderGeometry(ARENA_R + 2, ARENA_R + 2, 1, 64), [toon(0x8a7a6c), toon(0xffffff, { map: tex }), toon(0x8a7a6c)]);
-    top.position.y = -0.5; top.receiveShadow = true;
+    top.position.y = -0.5; top.receiveShadow = true; this.top = top;
     scene.add(top);
     const under = new THREE.Mesh(new THREE.ConeGeometry(ARENA_R + 2, 30, 18, 4), toon(0x5c4c44));
     under.position.y = -16; under.rotation.y = 0.3; under.rotation.x = Math.PI;

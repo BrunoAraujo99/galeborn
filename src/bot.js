@@ -54,6 +54,7 @@ function startBotMatch(diff = 'normal', heroId) {
     opp: { id: 'bot', name: BOT_NAMES[bh] + ' · BOT', hero: bh, rating: BOT_DIFF[diff].name },
     bot: { hero: bh, diff, oppHero: Hero.id, oppName: 'YOU' },
   };
+  match.bot.matchId = match.id;
   Lobby.lastKind = 'bot'; Lobby.lastDiff = diff;
   $('lobby').classList.remove('show');
   Duel.begin(match, BotLink);
@@ -83,7 +84,7 @@ const BotAI = {
     this.nextAtk = 0; this.comboLeft = 0; this.threatT = -1;
     if (Duel.active) { Duel.link = null; Duel.leave(); }
     G.setHero(cfg.hero, () => {
-      Duel.begin({ id: 'bot', kind: 'bot', side: 2, me_hero: cfg.hero, test: true, opp: { id: 'you', name: cfg.oppName, hero: cfg.oppHero } }, ParentLink);
+      Duel.begin({ id: cfg.matchId || 'bot', kind: 'bot', side: 2, me_hero: cfg.hero, test: true, opp: { id: 'you', name: cfg.oppName, hero: cfg.oppHero } }, ParentLink);
       G.lockOn = true;
     });
   },
@@ -136,6 +137,10 @@ const BotAI = {
     if (Burst.can(p) && Math.random() < D.recover * raw * 4) { a.block = true; return a; }
     if (p.state === 'launched') { if (p.st > 0.2 && Math.random() < D.recover * raw * 5) a.dash = true; return a; }
     if (p.state === 'down') { if (Math.random() < D.recover * raw * 6) a.jump = true; return a; }
+    // stay away from the edge and from vents about to erupt
+    const rC = Math.hypot(p.pos.x, p.pos.z), vd = Arena.danger(p.pos);
+    if (vd && p.state === 'move') { this.steer(a, p.pos.x - vd.x, p.pos.z - vd.z); if (Math.random() < raw * 3) a.dash = true; return a; }
+    if (rC > ARENA_R - 4 && p.state === 'move' && Math.random() < 0.6) { this.steer(a, -p.pos.x + ux * 2, -p.pos.z + uz * 2); if (rC > ARENA_R - 2 && Math.random() < raw * 2) a.dash = true; return a; }
     // ---- offence
     if (p.flow >= 100 && dist < 9 && Math.random() < D.ult * raw * 2) { a.special = true; return a; }
     this.strafeT -= raw; if (this.strafeT <= 0) { this.strafeT = rand(1.2, 2.6); this.strafe = Math.random() < 0.5 ? 1 : -1; }

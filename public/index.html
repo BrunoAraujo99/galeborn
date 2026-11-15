@@ -28,6 +28,10 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0b12; col
 /* ---------- HUD ---------- */
 #hud { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .4s; z-index: 5; }
 #hud.show { opacity: 1; }
+#rounds { position: absolute; top: 84px; left: 50%; transform: translateX(-50%); display: none; align-items: center; gap: 14px; font-weight: 900; font-size: 12px; letter-spacing: .25em; text-shadow: 2px 2px 0 #000; }
+body.duel #rounds { display: flex; } #rounds i { display: inline-block; width: 12px; height: 12px; margin: 0 3px; transform: rotate(45deg); border: 2px solid #000; background: rgba(255,255,255,.18); }
+#rounds .me i.on { background: var(--wind); box-shadow: 0 0 8px var(--wind); } #rounds .op i.on { background: #ff6a4a; box-shadow: 0 0 8px #ff6a4a; }
+.tier { font-weight: 900; letter-spacing: .12em; }
 #bossbar { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: min(720px, calc(100% - 32px)); }
 #bossbar .name { font-weight: 900; letter-spacing: 0.18em; font-size: 15px; text-shadow: 2px 2px 0 var(--ink); display: flex; justify-content: space-between; align-items: baseline; }
 #bossbar .name small { color: #ffb070; letter-spacing: 0.25em; font-size: 11px; }
@@ -312,6 +316,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
 <div id="speedLines"></div>
 <div id="popups"></div>
 <div id="hud">
+  <div id="rounds"></div>
   <div id="bossbar">
     <div class="bb-emblem"><svg id="bbEmb" viewBox="0 0 60 60"><path d="M30 3 L57 30 L30 57 L3 30 Z" fill="#1a0c0a" stroke="#ff7a2a" stroke-width="3"/><path d="M30 14 C38 24 40 30 36 38 C34 32 31 31 30 27 C28 33 22 35 24 42 C18 36 20 26 30 14 Z" fill="#ff8a30"/><path d="M30 30 C33 34 33 38 30 44 C27 38 27 34 30 30 Z" fill="#ffe08a"/></svg></div>
     <div class="bb-main">
@@ -7054,7 +7059,7 @@ const World = {
     // arena dais
     const tex = this.arenaTexture();
     const top = new THREE.Mesh(new THREE.CylinderGeometry(ARENA_R + 2, ARENA_R + 2, 1, 64), [toon(0x8a7a6c), toon(0xffffff, { map: tex }), toon(0x8a7a6c)]);
-    top.position.y = -0.5; top.receiveShadow = true;
+    top.position.y = -0.5; top.receiveShadow = true; this.top = top;
     scene.add(top);
     const under = new THREE.Mesh(new THREE.ConeGeometry(ARENA_R + 2, 30, 18, 4), toon(0x5c4c44));
     under.position.y = -16; under.rotation.y = 0.3; under.rotation.x = Math.PI;
@@ -8604,7 +8609,9 @@ class Player {
     if (this.vel.y < -40) this.vel.y = -40;
     const vyBefore = this.vel.y;
     this.pos.addScaledVector(this.vel, dt);
-    if (this.pos.y <= 0) {
+    const offEdge = Duel.active && Math.hypot(this.pos.x, this.pos.z) > ARENA_R + 2.1;
+    if (offEdge && this.alive && this.pos.y < -7) return this.ringOut();
+    if (this.pos.y <= 0 && !offEdge) {
       this.pos.y = 0;
       if (!this.grounded) {
         this.grounded = true; this.jumps = 0; this.airDashes = 0; this.airHits = 0;
@@ -8629,7 +8636,16 @@ class Player {
   }
   clampArena() {
     const r = Math.hypot(this.pos.x, this.pos.z), R = ARENA_R - 0.6;
-    if (r > R) { this.pos.x *= R / r; this.pos.z *= R / r; }
+    if (r <= R) return;
+    // in a duel a launched fighter can fly off the terrace: ring out
+    if (Duel.active && G.state === 'fight' && (this.state === 'launched' || this.state === 'dead' || r > ARENA_R + 2.1)) return;
+    if (Duel.active && r < ARENA_R + 2.1 && this.state !== 'move' && this.state !== 'dash') { const k = Math.max(R, r - 8 * (1 / 60)) / r; this.pos.x *= k; this.pos.z *= k; return; }
+    this.pos.x *= R / r; this.pos.z *= R / r;
+  }
+  ringOut() {
+    this.hp = 0; this.alive = false; this.state = 'dead'; this.st = 0; Sfx.loopOff('sfx_charge_loop');
+    FX.popup(this.chest().add(new V3(0, 2, 0)), 'RING OUT', 'break', Render.camera); Sfx.bigWhoosh();
+    G.onDefeat('RING OUT');
   }
   // pick a real animation clip for the model when one fits the state better than the procedural pose
   clipReq() {
@@ -10634,6 +10650,99 @@ const ProjClash = {
 
 'use strict';
 /* ============================================================
+   Stage 4: arenas, hazards, ring-outs, rounds, ranked tiers.
+   ============================================================ */
+const ARENAS = {
+  ruins: { name: 'SKY RUINS', sub: 'pillars stand · no hazards' },
+  moonwell: {
+    name: 'MOONWELL TERRACE', sub: 'tide vents erupt · mind the edge', vents: true,
+    pal: { top: 0x060a1e, mid: 0x1c2c62, hor: 0x6a72b8, sun: 0xdde8ff, fog: 0x28325e, hemiS: 0x9ab4ff, hemiG: 0x1a1a34, sunC: 0xb8c8ff, cloud: 0x5a6898 },
+    floor: 0x9fb4e8,
+  },
+};
+const ARENA_IDS = Object.keys(ARENAS);
+const VENT_C = new THREE.Color(0x3aa8ff);
+function strHash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+
+const Arena = {
+  id: 'ruins', vents: [], ventT: 0, cycle: -1, base: null,
+  pickFor(matchId) { return ARENA_IDS[strHash(String(matchId)) % ARENA_IDS.length]; },
+  set(id) {
+    const A = ARENAS[id] || ARENAS.ruins; this.id = ARENAS[id] ? id : 'ruins';
+    const p1 = World.palette.p1;
+    if (!this.base) { this.base = {}; for (const k in p1) this.base[k] = p1[k].clone(); }
+    for (const k in p1) p1[k].copy(this.base[k]);
+    if (A.pal) for (const k in A.pal) p1[k].set(A.pal[k]);
+    World.applyPalette(World.mix || 0);
+    const fm = World.top && Array.isArray(World.top.material) ? World.top.material[1] : null;
+    if (fm && fm.color) fm.color.set(A.floor || 0xffffff);
+    this.buildVents(!!A.vents);
+    if (this.lanterns) this.lanterns.visible = !!A.vents;
+    else if (A.vents) this.buildLanterns();
+  },
+  buildLanterns() {
+    const n = 16, g = new THREE.SphereGeometry(0.32, 10, 8), m = new THREE.MeshBasicMaterial({ color: 0xffd890 });
+    const im = new THREE.InstancedMesh(g, m, n); const M = new THREE.Matrix4();
+    for (let i = 0; i < n; i++) { const a = (i + 0.5) / n * TAU; M.makeTranslation(Math.cos(a) * (ARENA_R + 1.6), 1.25, Math.sin(a) * (ARENA_R + 1.6)); im.setMatrixAt(i, M); }
+    this.lanterns = im; Render.scene.add(im);
+  },
+  buildVents(on) {
+    if (!this.ventMeshes) {
+      this.ventMeshes = [];
+      for (let i = 0; i < 4; i++) {
+        const a = i / 4 * TAU + Math.PI / 4, pos = new V3(Math.cos(a) * 12, 0.04, Math.sin(a) * 12);
+        const mat = new THREE.MeshBasicMaterial({ color: 0x4ad8ff, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+        const ring = new THREE.Mesh(new THREE.RingGeometry(1.5, 2.2, 40), mat); ring.rotation.x = -Math.PI / 2; ring.position.copy(pos);
+        Render.scene.add(ring); this.ventMeshes.push({ pos, ring, mat, warn: 0, erupt: 0, hit: false });
+      }
+    }
+    for (const v of this.ventMeshes) v.ring.visible = on;
+    this.vents = on ? this.ventMeshes : [];
+  },
+  roundStart() { this.ventT = 0; this.cycle = -1; for (const v of this.vents) { v.warn = 0; v.erupt = 0; } },
+  // deterministic on both clients: the same vent fires for the same match + cycle
+  update(dt) {
+    if (!this.vents.length) return;
+    for (const v of this.vents) {
+      v.mat.opacity = 0.25 + Math.sin(G.time * 2 + v.pos.x) * 0.06 + v.warn * 0.5;
+      v.ring.scale.setScalar(1 + v.warn * 0.15 * Math.sin(G.time * 30));
+      if (v.erupt > 0) {
+        v.erupt -= dt;
+        if (Math.random() < dt * 40) FX.burst(v.pos.clone().setY(rand(0.3, 4)), 3, { speed: 6, life: 0.5, s0: 0.5, c0: C.white, c1: VENT_C, up: 10, grav: 14 });
+        const p = G.player;
+        if (!v.hit && p.alive && p.grounded && horizDist(p.pos, v.pos) < 2.4) {
+          v.hit = true;
+          const d = new V3(p.pos.x - v.pos.x, 0, p.pos.z - v.pos.z); if (d.lengthSq() < 0.01) d.set(1, 0, 0); d.normalize();
+          const r = p.tryHit(6, d, 'launch', 'hazard');
+          if (r === 'hit') { p.vel.y = 13; FX.popup(p.chest().add(new V3(0, 1, 0)), 'TIDE VENT', 'tag small', Render.camera); }
+        }
+      }
+    }
+    if (G.state !== 'fight') return;
+    this.ventT += dt;
+    const k = Math.floor(this.ventT / 6.5), ph = this.ventT - k * 6.5;
+    if (k < 1) return;
+    const v = this.vents[strHash((Duel.match ? Duel.match.id : 'solo') + ':' + Duel.round + ':' + k) % this.vents.length];
+    if (k !== this.cycle) { this.cycle = k; v.hit = false; }
+    if (ph < 1.4) v.warn = ph / 1.4;
+    else if (v.warn > 0) {
+      v.warn = 0; v.erupt = 0.7; v.hit = false;
+      FX.groundRing(v.pos, 6, 0x4ad8ff, 0.45); FX.shockwave(v.pos.clone().setY(1), 0.5, 1.2);
+      FX.burst(v.pos.clone().setY(0.5), 50, { speed: 8, life: 0.8, s0: 0.6, c0: C.white, c1: VENT_C, up: 22, grav: 18 });
+      Sfx.P('sfx_water_projectile', 0.8) || Sfx.boom(0.5); FX.shake(0.2);
+    }
+  },
+  // where is a vent about to blow? (for bots)
+  danger(pos) { for (const v of this.vents) if ((v.warn > 0.2 || v.erupt > 0) && horizDist(pos, v.pos) < 3.2) return v.pos; return null; },
+};
+
+/* ---------------- ranked tiers ---------------- */
+const TIERS = [[1450, 'ASCENDANT', '#ffd84a'], [1300, 'PARAGON', '#c58cff'], [1150, 'WARDEN', '#5ad1ff'], [1050, 'ADEPT', '#7be08a'], [-1e9, 'INITIATE', '#c8bca8']];
+function tierOf(r) { for (const t of TIERS) if ((+r || 0) >= t[0]) return { name: t[1], color: t[2], min: t[0] }; return { name: 'INITIATE', color: '#c8bca8', min: 0 }; }
+function tierTag(r) { const t = tierOf(r); return `<span class="tier" style="color:${t.color}">${t.name}</span>`; }
+
+'use strict';
+/* ============================================================
    Hero select: browse the four fighters on the live 3D model
    ============================================================ */
 const Select = {
@@ -10874,6 +10983,7 @@ const Duel = {
     this.install();
     this.match = match; this.active = true; this.started = false; this.ended = false; this.reported = false;
     this.gotHello = false; this.helloT = 0; this.sendT = 0; this.cdT = -1; this.lastRx = performance.now();
+    this.round = 1; this.wins = [0, 0]; this.matchDone = false; this.rmMe = false; this.rmOpp = false;
     G.mode = 'duel';
     const odef = HEROES[match.opp.hero] || HEROES.wind;
     if (!G.realBoss) G.realBoss = G.boss;
@@ -10881,14 +10991,14 @@ const Duel = {
     G.boss = Opp;
     Opp.puppet = new Puppet(odef); Opp.def = odef; Opp.alive = true; Opp.hp = Opp.maxHp = odef.stats.hp; Opp.held = false;
     G.reset();
-    const side = match.side === 1 ? 1 : -1;
-    const p = G.player; p.pos.set(0, 0, 9 * side); p.yaw = side > 0 ? Math.PI : 0;
-    Opp.puppet.pos.set(0, 0, -9 * side); Opp.puppet.yaw = side > 0 ? 0 : Math.PI;
-    Opp.puppet.rig.root.position.copy(Opp.puppet.pos); Opp.puppet.rig.root.rotation.y = Opp.puppet.yaw;
+    Arena.set(Arena.pickFor(match.id)); Arena.roundStart();
+    const p = G.player;
+    this.place();
+    this.renderRounds();
     document.querySelector('#bossbar .bn').textContent = match.opp.name;
     if (!this.bossEmb) this.bossEmb = $('bbEmb').innerHTML; $('bbEmb').innerHTML = heroGlyph(match.opp.hero);
     $('postRow').style.display = 'none'; document.body.classList.add('duel');
-    document.querySelector('#bossbar small').textContent = odef.name + ' · ' + odef.title + (match.opp.rating ? ' · ' + match.opp.rating : '');
+    document.querySelector('#bossbar small').textContent = odef.name + ' · ' + odef.title + (match.opp.rating ? ' · ' + (isFinite(+match.opp.rating) ? tierOf(match.opp.rating).name + ' ' : '') + match.opp.rating : '');
     $('title').classList.add('hide'); $('hud').classList.add('show'); $('lobby').classList.remove('show');
     this.link = new LinkClass(match.id, m => this.rx(m));
     G.state = 'intro'; G.introT = 0;
@@ -10944,8 +11054,9 @@ const Duel = {
       case 'cut': CutIn.play(Opp.rig, 'boss', m.name, m.sub, 1.1); FX.speedBg(1.1, true); break;
       case 'ult': this.ultVisual(Opp.def.pal, new V3(m.at[0], 0, m.at[1])); break;
       case 'clash': { const at = new V3(...m.at), f = Opp.pos.clone().sub(p.pos).setY(0).normalize(); duelClash(at, f); if (Opp.puppet) Opp.hp = Opp.puppet.hp; break; }
-      case 'ko': if (!this.ended) this.finish(true); break;
-      case 'bye': if (!this.ended && this.started) this.finish(true, 'OPPONENT LEFT'); break;
+      case 'ko': if (!this.ended) this.finish(true, m.why); break;
+      case 'bye': if (!this.matchDone && (this.started || this.round > 1)) { this.ended = false; this.finish(true, 'OPPONENT LEFT'); } break;
+      case 'rm': this.rmOpp = true; if (this.matchDone) this.rematchCheck(); break;
     }
   },
   // per frame, after the local fighter updated
@@ -10978,16 +11089,18 @@ const Duel = {
     // our new projectiles appear on the other side as harmless ghosts
     for (const pr of G.proj) if (pr.owner === 'player' && !pr.netSent) { pr.netSent = true; this.send({ t: 'pr', pos: [pr.pos.x, pr.pos.y, pr.pos.z], vel: [pr.vel.x, pr.vel.y, pr.vel.z], r: pr.r, life: pr.life, kind: pr.kind }); }
     // opponent vanished
-    if (this.started && !this.ended && performance.now() - this.lastRx > 8000) this.finish(true, 'OPPONENT DISCONNECTED');
+    if ((this.started || this.round > 1) && !this.matchDone && performance.now() - this.lastRx > 8000) { this.ended = false; this.finish(true, 'OPPONENT DISCONNECTED'); }
   },
   go() {
     this.started = true; this.cdT = -1;
     Cam.cine = null; Cam.snapBehind();
     G.state = 'fight'; Sfx.intensity = 1;
-    HUD.banner('DUEL', 'fight'); Sfx.boom(0.6);
+    HUD.banner(this.round === 1 ? 'DUEL' : 'FIGHT', 'fight'); Sfx.boom(0.6);
+    if (this.round === 1) { const A = ARENAS[Arena.id]; setTimeout(() => { if (this.active) HUD.prompt(A.name + ' · ' + A.sub, null, 2.4); }, 1600); }
     const adv = elemMult(Hero.id, Opp.def.id) > 1 ? 'ELEMENT ADVANTAGE ▲' : elemMult(Opp.def.id, Hero.id) > 1 ? 'ELEMENT DISADVANTAGE ▼' : '';
     if (adv) setTimeout(() => { if (this.active) FX.popup(G.player.chest().add(new V3(0, 1.1, 0)), adv, 'tag', Render.camera); }, 900);
-    G.stats.time = 0;
+    if (this.round === 1) G.stats.time = 0;
+    Arena.roundStart();
     Input.lock();
   },
   ultVisual(pal, at) {
@@ -11007,10 +11120,21 @@ const Duel = {
   finish(won, why) {
     if (this.ended) return;
     this.ended = true;
-    if (!won) this.send({ t: 'ko' });
+    if (!won) this.send({ t: 'ko', why });
+    const forfeit = !!(why && /LEFT|DISCONNECT/.test(why));
+    if (!forfeit) this.wins[won ? 0 : 1]++;
+    this.renderRounds();
     G.state = 'ending'; G.won = won;
     if (won) { Opp.alive = false; slowmo(0.2, 1.2); Render.post.impact = 1; FX.shake(0.8); Sfx.boom(1.4); }
     else { slowmo(0.3, 1); Render.post.flash = 0.3; }
+    if (!forfeit && this.wins[0] < 2 && this.wins[1] < 2) {
+      HUD.banner(why || (won ? 'ROUND ' + this.round : 'ROUND LOST'), won ? 'fight' : 'flow');
+      if (won) Sfx.stinger && Sfx.stinger('stinger_round'); 
+      const r = this.round;
+      setTimeout(() => { if (this.active && this.ended && !this.matchDone && this.round === r) this.nextRound(); }, 2900);
+      return;
+    }
+    this.matchDone = true;
     Sfx.intensity = 0; if (won) setTimeout(() => Sfx.victory(), 700); else Sfx.defeat();
     HUD.banner(won ? (why || 'K.O.') : 'DEFEAT', won ? 'fight' : 'flow');
     if (won) setTimeout(() => { if (G.player.alive) G.player.state = 'victory'; HUD.say(Hero.def.name, Hero.def.lines.win, 2.4); }, 900);
@@ -11034,7 +11158,7 @@ const Duel = {
     const won = G.won, m = this.match;
     $('endTitle').textContent = won ? 'VICTORY' : 'DEFEAT';
     $('endSub').textContent = `vs ${m.opp.name} · ${(HEROES[m.opp.hero] || HEROES.wind).name}`;
-    $('retryBtn').textContent = m.kind === 'ranked' ? 'FIND NEXT DUEL' : m.kind === 'bot' ? 'REMATCH' : 'BACK TO ROOM';
+    $('retryBtn').textContent = m.kind === 'ranked' ? 'FIND NEXT DUEL' : m.kind === 'bot' ? 'REMATCH' : this.rmOpp ? 'REMATCH · THEY\'RE READY' : 'REMATCH';
     $('heroBtn').textContent = 'MAIN MENU';
     this.renderResult();
     $('endPanel').className = 'panel show ' + (won ? 'win' : 'lose');
@@ -11045,7 +11169,49 @@ const Duel = {
     const r = this.result, m = this.match;
     const s = G.stats;
     let rate = m.kind === 'bot' ? `<div><span>Bot · ${m.opp.rating}</span><b>unranked</b></div>` : m.kind !== 'ranked' ? '<div><span>Friendly duel</span><b>unranked</b></div>' : r ? `<div><span>Rating</span><b>${(r.winner === Api.me?.id ? '+' : '−') + (r.delta || 0)}</b></div>` : '<div><span>Rating</span><b>…</b></div>';
-    $('endStats').innerHTML = rate + `<div><span>Time</span><b>${Math.round(s.time)}s</b></div><div><span>Best combo</span><b>${s.maxCombo}</b></div><div><span>Perfect dodges</span><b>${s.perfect}</b></div><div><span>Highlights</span><b>${s.moments || 0}</b></div>`;
+    $('endStats').innerHTML = rate + `<div><span>Rounds</span><b>${this.wins[0]} – ${this.wins[1]}</b></div><div><span>Time</span><b>${Math.round(s.time)}s</b></div><div><span>Best combo</span><b>${s.maxCombo}</b></div><div><span>Perfect dodges</span><b>${s.perfect}</b></div><div><span>Highlights</span><b>${s.moments || 0}</b></div>`;
+  },
+  place() {
+    const side = this.match.side === 1 ? 1 : -1, p = G.player;
+    p.pos.set(0, 0, 9 * side); p.yaw = side > 0 ? Math.PI : 0;
+    Opp.puppet.pos.set(0, 0, -9 * side); Opp.puppet.yaw = side > 0 ? 0 : Math.PI;
+    Opp.puppet.rig.root.position.copy(Opp.puppet.pos); Opp.puppet.rig.root.rotation.y = Opp.puppet.yaw;
+  },
+  renderRounds() {
+    const pip = n => [0, 1].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
+    $('rounds').innerHTML = `<span class="me">${pip(this.wins[0])}</span><b>ROUND ${Math.min(this.round, 3)}</b><span class="op">${pip(this.wins[1])}</span>`;
+  },
+  nextRound() {
+    this.round++; this.ended = false; this.started = false;
+    for (const pr of G.proj) pr.explode(true); G.proj.length = 0; FX.clear();
+    const keep = G.stats; G.player.reset(); G.stats = keep;
+    G.timeScale = G.tsTarget = 1; G.slowT = 0; G.hitstop = 0; G.won = false; G.flowT = 0; G.bossScale = G.bossScaleTarget = 1;
+    Awaken.reset(); Kit.reset(); Blitz.reset(); FlameTrail.reset(); Sfx.loopOff('sfx_charge_loop');
+    Object.assign(Render.post, { impact: 0, aberr: 0, speed: 0, flash: 0, lowHp: 0 });
+    World.resetEnv();
+    this.place();
+    Opp.alive = true; Opp.hp = Opp.maxHp; if (Opp.puppet) { Opp.puppet.hp = Opp.maxHp; Opp.puppet.snaps.length = 0; }
+    Cam.snapBehind && Cam.snapBehind();
+    G.state = 'intro'; this.cdT = 3.2;
+    this.renderRounds();
+    HUD.banner(this.wins[0] === 1 && this.wins[1] === 1 ? 'FINAL ROUND' : 'ROUND ' + this.round, 'flow'); Sfx.P('sfx_vs', 0.6);
+  },
+  // friendly rematch on the same connection: both players have to ask
+  requestRematch() {
+    if (!this.matchDone || this.rmMe) return;
+    this.rmMe = true; this.send({ t: 'rm' });
+    $('retryBtn').textContent = 'WAITING FOR OPPONENT…';
+    this.rematchCheck();
+  },
+  rematchCheck() {
+    if (!this.rmMe) { if (this.rmOpp && $('endPanel').classList.contains('show')) $('retryBtn').textContent = 'REMATCH · THEY\'RE READY'; return; }
+    if (!this.rmOpp) return;
+    // both agreed: restart the set
+    this.rmMe = this.rmOpp = false; this.matchDone = false; this.round = 0; this.wins = [0, 0];
+    $('endPanel').className = 'panel'; $('hud').classList.add('show');
+    G.stats = { time: 0, maxCombo: 0, perfect: 0, deflects: 0, breaks: 0, dmgTaken: 0, counters: 0, specials: 0 };
+    this.ended = true; this.nextRound();
+    Input.lock();
   },
   // leave the duel and restore solo mode
   leave() {
@@ -11060,6 +11226,7 @@ const Duel = {
     document.querySelector('#bossbar small').textContent = 'THE CINDER WARDEN';
     $('retryBtn').textContent = 'FIGHT AGAIN'; $('heroBtn').textContent = 'CHANGE HERO';
     this.active = false; this.started = false; G.mode = 'solo';
+    Arena.set('ruins'); $('rounds').innerHTML = '';
     Cam.cine = null;
   },
 };
@@ -11120,6 +11287,7 @@ function startBotMatch(diff = 'normal', heroId) {
     opp: { id: 'bot', name: BOT_NAMES[bh] + ' · BOT', hero: bh, rating: BOT_DIFF[diff].name },
     bot: { hero: bh, diff, oppHero: Hero.id, oppName: 'YOU' },
   };
+  match.bot.matchId = match.id;
   Lobby.lastKind = 'bot'; Lobby.lastDiff = diff;
   $('lobby').classList.remove('show');
   Duel.begin(match, BotLink);
@@ -11149,7 +11317,7 @@ const BotAI = {
     this.nextAtk = 0; this.comboLeft = 0; this.threatT = -1;
     if (Duel.active) { Duel.link = null; Duel.leave(); }
     G.setHero(cfg.hero, () => {
-      Duel.begin({ id: 'bot', kind: 'bot', side: 2, me_hero: cfg.hero, test: true, opp: { id: 'you', name: cfg.oppName, hero: cfg.oppHero } }, ParentLink);
+      Duel.begin({ id: cfg.matchId || 'bot', kind: 'bot', side: 2, me_hero: cfg.hero, test: true, opp: { id: 'you', name: cfg.oppName, hero: cfg.oppHero } }, ParentLink);
       G.lockOn = true;
     });
   },
@@ -11202,6 +11370,10 @@ const BotAI = {
     if (Burst.can(p) && Math.random() < D.recover * raw * 4) { a.block = true; return a; }
     if (p.state === 'launched') { if (p.st > 0.2 && Math.random() < D.recover * raw * 5) a.dash = true; return a; }
     if (p.state === 'down') { if (Math.random() < D.recover * raw * 6) a.jump = true; return a; }
+    // stay away from the edge and from vents about to erupt
+    const rC = Math.hypot(p.pos.x, p.pos.z), vd = Arena.danger(p.pos);
+    if (vd && p.state === 'move') { this.steer(a, p.pos.x - vd.x, p.pos.z - vd.z); if (Math.random() < raw * 3) a.dash = true; return a; }
+    if (rC > ARENA_R - 4 && p.state === 'move' && Math.random() < 0.6) { this.steer(a, -p.pos.x + ux * 2, -p.pos.z + uz * 2); if (rC > ARENA_R - 2 && Math.random() < raw * 2) a.dash = true; return a; }
     // ---- offence
     if (p.flow >= 100 && dist < 9 && Math.random() < D.ult * raw * 2) { a.special = true; return a; }
     this.strafeT -= raw; if (this.strafeT <= 0) { this.strafeT = rand(1.2, 2.6); this.strafe = Math.random() < 0.5 ? 1 : -1; }
@@ -11276,7 +11448,7 @@ const Lobby = {
     try {
       const me = await Api.ensure(this.defaultName());
       $('lbName').value = me.name;
-      $('lbMe').textContent = `Rating ${me.rating} · #${me.rank} · ${me.wins}W ${me.losses}L`;
+      $('lbMe').innerHTML = `${tierTag(me.rating)} · Rating ${me.rating} · #${me.rank} · ${me.wins}W ${me.losses}L`;
     } catch (e) { this.status('Can\'t reach the Galeborn server. You can still fight a bot offline.', true); return this.set(this.botButtons()); }
     if (mode === 'ranked') return this.search();
     if (this.pendingRoom) { const c = this.pendingRoom; this.pendingRoom = null; return this.join(c); }
@@ -11365,8 +11537,8 @@ const Lobby = {
     try {
       const rows = await Api.leaderboard(50);
       let me = null; if (Api.token) me = await Api.ensure().catch(() => null);
-      $('boardBody').innerHTML = (rows.length ? `<table><tr><th>#</th><th>Name</th><th>Rating</th><th>W</th><th>L</th></tr>${rows.map((r, i) => `<tr class="${me && r.name === me.name && r.rating === me.rating ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.name)}</td><td>${r.rating}</td><td>${r.wins}</td><td>${r.losses}</td></tr>`).join('')}</table>` : '<p>No ranked duels yet. Be the first.</p>')
-        + (me ? `<p class="boardMe">You: ${esc(me.name)} · ${me.rating} · #${me.rank}</p>` : '');
+      $('boardBody').innerHTML = (rows.length ? `<table><tr><th>#</th><th>Name</th><th>Tier</th><th>Rating</th><th>W</th><th>L</th></tr>${rows.map((r, i) => `<tr class="${me && r.name === me.name && r.rating === me.rating ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.name)}</td><td>${tierTag(r.rating)}</td><td>${r.rating}</td><td>${r.wins}</td><td>${r.losses}</td></tr>`).join('')}</table>` : '<p>No ranked duels yet. Be the first.</p>')
+        + (me ? `<p class="boardMe">You: ${esc(me.name)} · ${tierTag(me.rating)} ${me.rating} · #${me.rank}</p>` : '');
     } catch (e) { $('boardBody').innerHTML = '<p>Can\'t reach the Galeborn server.</p>'; }
   },
 };
@@ -11872,8 +12044,8 @@ G.onVictory = function () {
   setTimeout(() => { if (G.won && G.player.alive) { G.player.state = 'victory'; HUD.say(Hero.def.name, Hero.def.lines.win, 2.4); } }, 1800);
   setTimeout(() => { if (G.won) showEnd(true); }, 4200);
 };
-G.onDefeat = function () {
-  if (Duel.active) return Duel.finish(false);
+G.onDefeat = function (why) {
+  if (Duel.active) return Duel.finish(false, why);
   G.state = 'ending'; G.won = false;
   slowmo(0.25, 1.2);
   Render.post.flash = 0.3; Sfx.intensity = 0; Sfx.defeat();
@@ -12001,7 +12173,7 @@ function main() {
   canvas.addEventListener('click', () => { if (G.state === 'fight' && !G.paused) Input.lock(); });
   $('playBtn').addEventListener('click', () => { Sfx.init(); Select.open('ranked'); });
   $('heroBtn').addEventListener('click', () => { Sfx.ui(); if (Duel.active) { Duel.leave(); G.reset(); G.state = 'title'; $('title').classList.remove('hide'); $('hud').classList.remove('show'); $('endPanel').className = 'panel'; } else Select.open(); });
-  $('retryBtn').addEventListener('click', () => { Sfx.ui(); if (Duel.active) { $('endPanel').className = 'panel'; Lobby.again(); } else G.startIntro(); });
+  $('retryBtn').addEventListener('click', () => { Sfx.ui(); if (Duel.active && Duel.match && Duel.match.kind !== 'ranked' && Duel.match.kind !== 'bot') return Duel.requestRematch(); if (Duel.active) { $('endPanel').className = 'panel'; Lobby.again(); } else G.startIntro(); });
   document.addEventListener('pointerlockchange', () => { $('clickLock').classList.toggle('show', !document.pointerLockElement && G.state === 'fight' && !G.paused && Input.lastDevice === 'kb'); });
   function togglePause(v) {
     G.menuOpen = v;
@@ -12081,7 +12253,7 @@ function main() {
       else { Duel.mirror = Duel.active; G.player.update(pdt, a); Duel.mirror = false; G.boss.update(Duel.active ? sim : bdt); }
       Duel.tick(raw);
       for (const p of G.proj) { p.update(p.owner === 'boss' ? bdt : pdt, Render.camera); if (!p.dead && p.owner === 'boss') Graze.check(p, G.player); }
-      ProjClash.update();
+      ProjClash.update(); Arena.update(pdt);
       for (let i = G.proj.length - 1; i >= 0; i--) if (G.proj[i].dead) G.proj.splice(i, 1);
       // wind cancels fire: player projectiles destroy fireballs
       for (const p of G.proj) if (p.owner === 'player' && !p.dead && p.kind !== 'fireball') for (const q of G.proj) if (q.owner === 'boss' && !q.dead && p.pos.distanceTo(q.pos) < p.r + q.r) { q.explode(); Sfx.deflect(); G.player.gainFlow(4); }
@@ -12124,5 +12296,5 @@ window.addEventListener('load', () => {
 });
 
 </script>
-<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1115-2136</div></body>
+<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1115-2154</div></body>
 </html>

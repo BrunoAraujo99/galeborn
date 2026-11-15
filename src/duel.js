@@ -122,6 +122,7 @@ const Duel = {
     this.install();
     this.match = match; this.active = true; this.started = false; this.ended = false; this.reported = false;
     this.gotHello = false; this.helloT = 0; this.sendT = 0; this.cdT = -1; this.lastRx = performance.now();
+    this.round = 1; this.wins = [0, 0]; this.matchDone = false; this.rmMe = false; this.rmOpp = false;
     G.mode = 'duel';
     const odef = HEROES[match.opp.hero] || HEROES.wind;
     if (!G.realBoss) G.realBoss = G.boss;
@@ -129,14 +130,14 @@ const Duel = {
     G.boss = Opp;
     Opp.puppet = new Puppet(odef); Opp.def = odef; Opp.alive = true; Opp.hp = Opp.maxHp = odef.stats.hp; Opp.held = false;
     G.reset();
-    const side = match.side === 1 ? 1 : -1;
-    const p = G.player; p.pos.set(0, 0, 9 * side); p.yaw = side > 0 ? Math.PI : 0;
-    Opp.puppet.pos.set(0, 0, -9 * side); Opp.puppet.yaw = side > 0 ? 0 : Math.PI;
-    Opp.puppet.rig.root.position.copy(Opp.puppet.pos); Opp.puppet.rig.root.rotation.y = Opp.puppet.yaw;
+    Arena.set(Arena.pickFor(match.id)); Arena.roundStart();
+    const p = G.player;
+    this.place();
+    this.renderRounds();
     document.querySelector('#bossbar .bn').textContent = match.opp.name;
     if (!this.bossEmb) this.bossEmb = $('bbEmb').innerHTML; $('bbEmb').innerHTML = heroGlyph(match.opp.hero);
     $('postRow').style.display = 'none'; document.body.classList.add('duel');
-    document.querySelector('#bossbar small').textContent = odef.name + ' · ' + odef.title + (match.opp.rating ? ' · ' + match.opp.rating : '');
+    document.querySelector('#bossbar small').textContent = odef.name + ' · ' + odef.title + (match.opp.rating ? ' · ' + (isFinite(+match.opp.rating) ? tierOf(match.opp.rating).name + ' ' : '') + match.opp.rating : '');
     $('title').classList.add('hide'); $('hud').classList.add('show'); $('lobby').classList.remove('show');
     this.link = new LinkClass(match.id, m => this.rx(m));
     G.state = 'intro'; G.introT = 0;
@@ -192,8 +193,9 @@ const Duel = {
       case 'cut': CutIn.play(Opp.rig, 'boss', m.name, m.sub, 1.1); FX.speedBg(1.1, true); break;
       case 'ult': this.ultVisual(Opp.def.pal, new V3(m.at[0], 0, m.at[1])); break;
       case 'clash': { const at = new V3(...m.at), f = Opp.pos.clone().sub(p.pos).setY(0).normalize(); duelClash(at, f); if (Opp.puppet) Opp.hp = Opp.puppet.hp; break; }
-      case 'ko': if (!this.ended) this.finish(true); break;
-      case 'bye': if (!this.ended && this.started) this.finish(true, 'OPPONENT LEFT'); break;
+      case 'ko': if (!this.ended) this.finish(true, m.why); break;
+      case 'bye': if (!this.matchDone && (this.started || this.round > 1)) { this.ended = false; this.finish(true, 'OPPONENT LEFT'); } break;
+      case 'rm': this.rmOpp = true; if (this.matchDone) this.rematchCheck(); break;
     }
   },
   // per frame, after the local fighter updated
@@ -226,16 +228,18 @@ const Duel = {
     // our new projectiles appear on the other side as harmless ghosts
     for (const pr of G.proj) if (pr.owner === 'player' && !pr.netSent) { pr.netSent = true; this.send({ t: 'pr', pos: [pr.pos.x, pr.pos.y, pr.pos.z], vel: [pr.vel.x, pr.vel.y, pr.vel.z], r: pr.r, life: pr.life, kind: pr.kind }); }
     // opponent vanished
-    if (this.started && !this.ended && performance.now() - this.lastRx > 8000) this.finish(true, 'OPPONENT DISCONNECTED');
+    if ((this.started || this.round > 1) && !this.matchDone && performance.now() - this.lastRx > 8000) { this.ended = false; this.finish(true, 'OPPONENT DISCONNECTED'); }
   },
   go() {
     this.started = true; this.cdT = -1;
     Cam.cine = null; Cam.snapBehind();
     G.state = 'fight'; Sfx.intensity = 1;
-    HUD.banner('DUEL', 'fight'); Sfx.boom(0.6);
+    HUD.banner(this.round === 1 ? 'DUEL' : 'FIGHT', 'fight'); Sfx.boom(0.6);
+    if (this.round === 1) { const A = ARENAS[Arena.id]; setTimeout(() => { if (this.active) HUD.prompt(A.name + ' · ' + A.sub, null, 2.4); }, 1600); }
     const adv = elemMult(Hero.id, Opp.def.id) > 1 ? 'ELEMENT ADVANTAGE ▲' : elemMult(Opp.def.id, Hero.id) > 1 ? 'ELEMENT DISADVANTAGE ▼' : '';
     if (adv) setTimeout(() => { if (this.active) FX.popup(G.player.chest().add(new V3(0, 1.1, 0)), adv, 'tag', Render.camera); }, 900);
-    G.stats.time = 0;
+    if (this.round === 1) G.stats.time = 0;
+    Arena.roundStart();
     Input.lock();
   },
   ultVisual(pal, at) {
@@ -255,10 +259,21 @@ const Duel = {
   finish(won, why) {
     if (this.ended) return;
     this.ended = true;
-    if (!won) this.send({ t: 'ko' });
+    if (!won) this.send({ t: 'ko', why });
+    const forfeit = !!(why && /LEFT|DISCONNECT/.test(why));
+    if (!forfeit) this.wins[won ? 0 : 1]++;
+    this.renderRounds();
     G.state = 'ending'; G.won = won;
     if (won) { Opp.alive = false; slowmo(0.2, 1.2); Render.post.impact = 1; FX.shake(0.8); Sfx.boom(1.4); }
     else { slowmo(0.3, 1); Render.post.flash = 0.3; }
+    if (!forfeit && this.wins[0] < 2 && this.wins[1] < 2) {
+      HUD.banner(why || (won ? 'ROUND ' + this.round : 'ROUND LOST'), won ? 'fight' : 'flow');
+      if (won) Sfx.stinger && Sfx.stinger('stinger_round'); 
+      const r = this.round;
+      setTimeout(() => { if (this.active && this.ended && !this.matchDone && this.round === r) this.nextRound(); }, 2900);
+      return;
+    }
+    this.matchDone = true;
     Sfx.intensity = 0; if (won) setTimeout(() => Sfx.victory(), 700); else Sfx.defeat();
     HUD.banner(won ? (why || 'K.O.') : 'DEFEAT', won ? 'fight' : 'flow');
     if (won) setTimeout(() => { if (G.player.alive) G.player.state = 'victory'; HUD.say(Hero.def.name, Hero.def.lines.win, 2.4); }, 900);
@@ -282,7 +297,7 @@ const Duel = {
     const won = G.won, m = this.match;
     $('endTitle').textContent = won ? 'VICTORY' : 'DEFEAT';
     $('endSub').textContent = `vs ${m.opp.name} · ${(HEROES[m.opp.hero] || HEROES.wind).name}`;
-    $('retryBtn').textContent = m.kind === 'ranked' ? 'FIND NEXT DUEL' : m.kind === 'bot' ? 'REMATCH' : 'BACK TO ROOM';
+    $('retryBtn').textContent = m.kind === 'ranked' ? 'FIND NEXT DUEL' : m.kind === 'bot' ? 'REMATCH' : this.rmOpp ? 'REMATCH · THEY\'RE READY' : 'REMATCH';
     $('heroBtn').textContent = 'MAIN MENU';
     this.renderResult();
     $('endPanel').className = 'panel show ' + (won ? 'win' : 'lose');
@@ -293,7 +308,49 @@ const Duel = {
     const r = this.result, m = this.match;
     const s = G.stats;
     let rate = m.kind === 'bot' ? `<div><span>Bot · ${m.opp.rating}</span><b>unranked</b></div>` : m.kind !== 'ranked' ? '<div><span>Friendly duel</span><b>unranked</b></div>' : r ? `<div><span>Rating</span><b>${(r.winner === Api.me?.id ? '+' : '−') + (r.delta || 0)}</b></div>` : '<div><span>Rating</span><b>…</b></div>';
-    $('endStats').innerHTML = rate + `<div><span>Time</span><b>${Math.round(s.time)}s</b></div><div><span>Best combo</span><b>${s.maxCombo}</b></div><div><span>Perfect dodges</span><b>${s.perfect}</b></div><div><span>Highlights</span><b>${s.moments || 0}</b></div>`;
+    $('endStats').innerHTML = rate + `<div><span>Rounds</span><b>${this.wins[0]} – ${this.wins[1]}</b></div><div><span>Time</span><b>${Math.round(s.time)}s</b></div><div><span>Best combo</span><b>${s.maxCombo}</b></div><div><span>Perfect dodges</span><b>${s.perfect}</b></div><div><span>Highlights</span><b>${s.moments || 0}</b></div>`;
+  },
+  place() {
+    const side = this.match.side === 1 ? 1 : -1, p = G.player;
+    p.pos.set(0, 0, 9 * side); p.yaw = side > 0 ? Math.PI : 0;
+    Opp.puppet.pos.set(0, 0, -9 * side); Opp.puppet.yaw = side > 0 ? 0 : Math.PI;
+    Opp.puppet.rig.root.position.copy(Opp.puppet.pos); Opp.puppet.rig.root.rotation.y = Opp.puppet.yaw;
+  },
+  renderRounds() {
+    const pip = n => [0, 1].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
+    $('rounds').innerHTML = `<span class="me">${pip(this.wins[0])}</span><b>ROUND ${Math.min(this.round, 3)}</b><span class="op">${pip(this.wins[1])}</span>`;
+  },
+  nextRound() {
+    this.round++; this.ended = false; this.started = false;
+    for (const pr of G.proj) pr.explode(true); G.proj.length = 0; FX.clear();
+    const keep = G.stats; G.player.reset(); G.stats = keep;
+    G.timeScale = G.tsTarget = 1; G.slowT = 0; G.hitstop = 0; G.won = false; G.flowT = 0; G.bossScale = G.bossScaleTarget = 1;
+    Awaken.reset(); Kit.reset(); Blitz.reset(); FlameTrail.reset(); Sfx.loopOff('sfx_charge_loop');
+    Object.assign(Render.post, { impact: 0, aberr: 0, speed: 0, flash: 0, lowHp: 0 });
+    World.resetEnv();
+    this.place();
+    Opp.alive = true; Opp.hp = Opp.maxHp; if (Opp.puppet) { Opp.puppet.hp = Opp.maxHp; Opp.puppet.snaps.length = 0; }
+    Cam.snapBehind && Cam.snapBehind();
+    G.state = 'intro'; this.cdT = 3.2;
+    this.renderRounds();
+    HUD.banner(this.wins[0] === 1 && this.wins[1] === 1 ? 'FINAL ROUND' : 'ROUND ' + this.round, 'flow'); Sfx.P('sfx_vs', 0.6);
+  },
+  // friendly rematch on the same connection: both players have to ask
+  requestRematch() {
+    if (!this.matchDone || this.rmMe) return;
+    this.rmMe = true; this.send({ t: 'rm' });
+    $('retryBtn').textContent = 'WAITING FOR OPPONENT…';
+    this.rematchCheck();
+  },
+  rematchCheck() {
+    if (!this.rmMe) { if (this.rmOpp && $('endPanel').classList.contains('show')) $('retryBtn').textContent = 'REMATCH · THEY\'RE READY'; return; }
+    if (!this.rmOpp) return;
+    // both agreed: restart the set
+    this.rmMe = this.rmOpp = false; this.matchDone = false; this.round = 0; this.wins = [0, 0];
+    $('endPanel').className = 'panel'; $('hud').classList.add('show');
+    G.stats = { time: 0, maxCombo: 0, perfect: 0, deflects: 0, breaks: 0, dmgTaken: 0, counters: 0, specials: 0 };
+    this.ended = true; this.nextRound();
+    Input.lock();
   },
   // leave the duel and restore solo mode
   leave() {
@@ -308,6 +365,7 @@ const Duel = {
     document.querySelector('#bossbar small').textContent = 'THE CINDER WARDEN';
     $('retryBtn').textContent = 'FIGHT AGAIN'; $('heroBtn').textContent = 'CHANGE HERO';
     this.active = false; this.started = false; G.mode = 'solo';
+    Arena.set('ruins'); $('rounds').innerHTML = '';
     Cam.cine = null;
   },
 };

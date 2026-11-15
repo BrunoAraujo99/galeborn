@@ -173,8 +173,8 @@ G.onVictory = function () {
   setTimeout(() => { if (G.won && G.player.alive) { G.player.state = 'victory'; HUD.say(Hero.def.name, Hero.def.lines.win, 2.4); } }, 1800);
   setTimeout(() => { if (G.won) showEnd(true); }, 4200);
 };
-G.onDefeat = function () {
-  if (Duel.active) return Duel.finish(false);
+G.onDefeat = function (why) {
+  if (Duel.active) return Duel.finish(false, why);
   G.state = 'ending'; G.won = false;
   slowmo(0.25, 1.2);
   Render.post.flash = 0.3; Sfx.intensity = 0; Sfx.defeat();
@@ -302,7 +302,7 @@ function main() {
   canvas.addEventListener('click', () => { if (G.state === 'fight' && !G.paused) Input.lock(); });
   $('playBtn').addEventListener('click', () => { Sfx.init(); Select.open('ranked'); });
   $('heroBtn').addEventListener('click', () => { Sfx.ui(); if (Duel.active) { Duel.leave(); G.reset(); G.state = 'title'; $('title').classList.remove('hide'); $('hud').classList.remove('show'); $('endPanel').className = 'panel'; } else Select.open(); });
-  $('retryBtn').addEventListener('click', () => { Sfx.ui(); if (Duel.active) { $('endPanel').className = 'panel'; Lobby.again(); } else G.startIntro(); });
+  $('retryBtn').addEventListener('click', () => { Sfx.ui(); if (Duel.active && Duel.match && Duel.match.kind !== 'ranked' && Duel.match.kind !== 'bot') return Duel.requestRematch(); if (Duel.active) { $('endPanel').className = 'panel'; Lobby.again(); } else G.startIntro(); });
   document.addEventListener('pointerlockchange', () => { $('clickLock').classList.toggle('show', !document.pointerLockElement && G.state === 'fight' && !G.paused && Input.lastDevice === 'kb'); });
   function togglePause(v) {
     G.menuOpen = v;
@@ -382,7 +382,7 @@ function main() {
       else { Duel.mirror = Duel.active; G.player.update(pdt, a); Duel.mirror = false; G.boss.update(Duel.active ? sim : bdt); }
       Duel.tick(raw);
       for (const p of G.proj) { p.update(p.owner === 'boss' ? bdt : pdt, Render.camera); if (!p.dead && p.owner === 'boss') Graze.check(p, G.player); }
-      ProjClash.update();
+      ProjClash.update(); Arena.update(pdt);
       for (let i = G.proj.length - 1; i >= 0; i--) if (G.proj[i].dead) G.proj.splice(i, 1);
       // wind cancels fire: player projectiles destroy fireballs
       for (const p of G.proj) if (p.owner === 'player' && !p.dead && p.kind !== 'fireball') for (const q of G.proj) if (q.owner === 'boss' && !q.dead && p.pos.distanceTo(q.pos) < p.r + q.r) { q.explode(); Sfx.deflect(); G.player.gainFlow(4); }
