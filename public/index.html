@@ -10874,7 +10874,13 @@ const ARENAS = {
     pal: { top: 0x060a1e, mid: 0x1c2c62, hor: 0x6a72b8, sun: 0xdde8ff, fog: 0x28325e, hemiS: 0x9ab4ff, hemiG: 0x1a1a34, sunC: 0xb8c8ff, cloud: 0x5a6898 },
     floor: 0x9fb4e8,
   },
+  galespire: {
+    name: 'GALE SPIRE', sub: 'crosswinds gust · ride them or fall', gusts: true,
+    pal: { top: 0x3b5f9a, mid: 0x8fb4d8, hor: 0xffcf8a, sun: 0xfff0c8, fog: 0xd8b890, hemiS: 0xffe0b0, hemiG: 0x5a4030, sunC: 0xffd8a0, cloud: 0xf0d0b0 },
+    floor: 0xf2dcc0,
+  },
 };
+const GUST_EVERY = 8, GUST_WARN = 1.3, GUST_LEN = 1.4, GUST_SPEED = 5;
 const ARENA_IDS = Object.keys(ARENAS);
 const VENT_C = new THREE.Color(0x3aa8ff);
 function strHash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -10892,6 +10898,7 @@ const Arena = {
     const fm = World.top && Array.isArray(World.top.material) ? World.top.material[1] : null;
     if (fm && fm.color) fm.color.set(A.floor || 0xffffff);
     this.buildVents(!!A.vents);
+    this.buildGust(!!A.gusts);
     if (this.lanterns) this.lanterns.visible = !!A.vents;
     else if (A.vents) this.buildLanterns();
   },
@@ -10914,9 +10921,52 @@ const Arena = {
     for (const v of this.ventMeshes) v.ring.visible = on;
     this.vents = on ? this.ventMeshes : [];
   },
-  roundStart() { this.ventT = 0; this.cycle = -1; for (const v of this.vents) { v.warn = 0; v.erupt = 0; } },
+  roundStart() { this.ventT = 0; this.cycle = -1; for (const v of this.vents) { v.warn = 0; v.erupt = 0; } this.gustT = 0; this.gust = null; if (this.arrow) this.arrow.visible = false; },
+  // Gale Spire: a big floor arrow warns, then a crosswind shoves everyone that way
+  buildGust(on) {
+    this.gustOn = on; this.gust = null; this.gustT = 0;
+    if (on && !this.arrow) {
+      const sh = new THREE.Shape();
+      sh.moveTo(-0.9, -3); sh.lineTo(0.9, -3); sh.lineTo(0.9, 0.6); sh.lineTo(2.2, 0.6); sh.lineTo(0, 3.4); sh.lineTo(-2.2, 0.6); sh.lineTo(-0.9, 0.6); sh.closePath();
+      const mat = new THREE.MeshBasicMaterial({ color: 0xfff2c8, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+      const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), mat); m.rotation.order = 'YXZ'; m.rotation.x = -Math.PI / 2; m.position.y = 0.06; m.renderOrder = 5;
+      this.arrow = m; this.arrowMat = mat; Render.scene.add(m);
+    }
+    if (this.arrow) this.arrow.visible = false;
+  },
+  updGust(dt) {
+    if (!this.gustOn) return;
+    const A = this.arrow;
+    if (G.state !== 'fight') { A.visible = false; return; }
+    this.gustT += dt;
+    const k = Math.floor(this.gustT / GUST_EVERY), ph = this.gustT - k * GUST_EVERY;
+    if (k < 1 || ph > GUST_WARN + GUST_LEN) { A.visible = false; this.gust = null; return; }
+    const ang = (strHash((Duel.match ? Duel.match.id : 'solo') + ':g:' + Duel.round + ':' + k) % 360) / 360 * TAU;
+    const d = new V3(Math.sin(ang), 0, Math.cos(ang));
+    A.visible = true; A.rotation.y = ang + Math.PI;
+    if (ph < GUST_WARN) {
+      this.gust = null;
+      this.arrowMat.opacity = 0.25 + 0.35 * (0.5 + 0.5 * Math.sin(ph * 18));
+      A.position.set(d.x * ph * 0.8, 0.06, d.z * ph * 0.8);
+      if (!this.warned || this.warned !== k) { this.warned = k; Sfx.P('sfx_riser', 0.4) || Sfx.whoosh(0.6, 0.3); }
+      return;
+    }
+    if (!this.gust) { this.gust = d; Sfx.P('sfx_whoosh_big', 0.9) || Sfx.whoosh(1.6, 0.5); FX.shake(0.15); }
+    this.arrowMat.opacity = 0.7 * (1 - (ph - GUST_WARN) / GUST_LEN);
+    A.position.addScaledVector(d, dt * 6);
+    const p = G.player;
+    if (p.alive && p.state !== 'special') {
+      const sp = GUST_SPEED * (p.state === 'block' || p.state === 'parry' ? 0.4 : 1) * (p.grounded ? 1 : 1.4);
+      p.pos.addScaledVector(d, sp * dt);
+    }
+    if (Math.random() < dt * 30) {
+      const side = new V3(-d.z, 0, d.x), o = new V3().addScaledVector(side, rand(-14, 14)).addScaledVector(d, -14);
+      FX.burst(o.setY(rand(0.4, 3.2)), 1, { speed: 30, dir: d, spread: 0.04, drag: 0, life: 0.9, s0: 0.25, s1: 0.1, c0: C.white, c1: C.white, alpha: 0.7 });
+    }
+  },
   // deterministic on both clients: the same vent fires for the same match + cycle
   update(dt) {
+    this.updGust(dt);
     if (!this.vents.length) return;
     for (const v of this.vents) {
       v.mat.opacity = 0.25 + Math.sin(G.time * 2 + v.pos.x) * 0.06 + v.warn * 0.5;
@@ -10948,7 +10998,7 @@ const Arena = {
     }
   },
   // where is a vent about to blow? (for bots)
-  danger(pos) { for (const v of this.vents) if ((v.warn > 0.2 || v.erupt > 0) && horizDist(pos, v.pos) < 3.2) return v.pos; return null; },
+  danger(pos) { if (this.gust && Math.hypot(pos.x, pos.z) > ARENA_R - 5 && pos.x * this.gust.x + pos.z * this.gust.z > 0) return new V3(); for (const v of this.vents) if ((v.warn > 0.2 || v.erupt > 0) && horizDist(pos, v.pos) < 3.2) return v.pos; return null; },
 };
 
 /* ---------------- ranked tiers ---------------- */
@@ -12912,5 +12962,5 @@ window.addEventListener('load', () => {
 });
 
 </script>
-<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1115-2336</div></body>
+<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1115-2341</div></body>
 </html>
