@@ -176,7 +176,14 @@ const Duel = {
         if (res === 'parried') this.send({ t: 'parried' });
         break;
       }
-      case 'miss': FX.popup(Opp.chest().add(new V3(0, 0.9, 0)), m.why === 'dodged' ? 'DODGED' : 'BLOCKED', 'tag small', Render.camera); break;
+      case 'pun': Tempo.punish(Opp.chest()); break;
+      case 'miss':
+        // our strike was blocked: the string is broken, and a blocked big hit leaves us wide open
+        if (m.why === 'blocked' && p.state === 'attack' && p.move) {
+          p.moveBlocked = true;
+          if ((p.move.big || p.move.finisher) && !p.move.armor) { p.state = 'hit'; p.st = 0; p.stunDur = 0.42; p.openT = 0.5; p.vel.set(-p.fwd().x * 3, p.vel.y, -p.fwd().z * 3); FX.popup(p.chest().add(new V3(0, 1.1, 0)), 'OPEN!', 'tag small', Render.camera); }
+        }
+        FX.popup(Opp.chest().add(new V3(0, 0.9, 0)), m.why === 'dodged' ? 'DODGED' : 'BLOCKED', 'tag small', Render.camera); break;
       case 'parried': {
         // our strike was parried: we're thrown off balance and open to their counter
         if (!p.alive) break;

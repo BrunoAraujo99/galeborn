@@ -105,13 +105,18 @@ const BotAI = {
     const os = o.puppet.state, t = G.time;
     // ---- defence: the human starts a move close by -> maybe dodge after a human-like delay
     const threat = dist < 4.8 && ['attack', 'special', 'slam', 'counter', 'pursuit', 'dash'].includes(os) && os !== 'dash';
-    // a parry earns a counter: take it
+    // the human is stuck in recovery right next to us: punish
+    if (o.puppet.state === 'hit' && dist < 3 && (p.state === 'move' || p.state === 'block') && (this.punT || 0) < t && Math.random() < D.chase) { this.punT = t + 0.6; a.light = true; this.steer(a, ux, uz); return a; }
+        // a parry earns a counter: take it
     if (p.state === 'parry') { if (p.st > 0.04) { a.light = true; this.steer(a, ux, uz); } return a; }
     if (threat) {
       if (this.threatT < 0) {
         this.threatT = t; this.dodged = false;
+        // the more the human keeps swinging, the more the bot reads it and guards
+        this.pressure = (this.pressure || 0) * Math.exp(-(t - (this.lastThreat || 0)) / 4) + 1; this.lastThreat = t;
+        const pp = D.parry > 0 ? D.parry + Math.min(0.25, (this.pressure - 1) * 0.05) : 0, pb = D.block + Math.min(0.2, (this.pressure - 1) * 0.04);
         const r = Math.random();
-        this.defMode = r < D.parry ? 'parry' : r < D.parry + D.block ? 'block' : Math.random() < D.dodge ? 'dodge' : 'none';
+        this.defMode = r < pp ? 'parry' : r < pp + pb ? 'block' : Math.random() < D.dodge ? 'dodge' : 'none';
         this.willDodge = this.defMode === 'dodge';
       }
       if (this.defMode === 'parry' && t - this.threatT > 0.03) { a.block = true; this.holdBlockT = t + 0.25; return a; }

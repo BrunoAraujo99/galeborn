@@ -158,6 +158,7 @@ body.awake .portrait, body.awake #flowRingFg { filter: drop-shadow(0 0 8px #5ff0
 .dnum.big span { font-size: 54px; color: #e9ffff; text-shadow: -4px -4px 0 var(--ink), 4px -4px 0 var(--ink), -4px 4px 0 var(--ink), 4px 4px 0 var(--ink), 0 5px 0 var(--ink), 0 0 24px #30d0ff; }
 .dnum.gold span { font-size: 66px; color: #ffe27a; text-shadow: -4px -4px 0 var(--ink), 4px -4px 0 var(--ink), -4px 4px 0 var(--ink), 4px 4px 0 var(--ink), 0 6px 0 #7a3a00, 0 0 30px #ffb020; }
 .dnum.gold small { background: #ffcc40; }
+.dnum.stale span { font-size: 26px; color: #a9a4b4; text-shadow: -2px -2px 0 var(--ink), 2px -2px 0 var(--ink), -2px 2px 0 var(--ink), 2px 2px 0 var(--ink); } .dnum.stale small { background: #6a6676; }
 .dnum.hurt span { font-size: 40px; color: #ff5040; text-shadow: -3px -3px 0 #fff, 3px -3px 0 #fff, -3px 3px 0 #fff, 3px 3px 0 #fff, 0 0 18px #ff2000; }
 @keyframes dnum { 0% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--rot)) scale(2.6); } 8% { opacity: 1; transform: translate(-50%, -50%) rotate(var(--rot)) scale(0.9); }
   14% { transform: translate(-50%, -50%) rotate(var(--rot)) scale(1.08); } 20% { transform: translate(-50%, -50%) rotate(var(--rot)) scale(1); }
@@ -7908,7 +7909,12 @@ class Player {
   bufferInputs(a) {
     if (!this.alive || G.state !== 'fight') return;
     const set = n => { this.buf = n; this.bufT = 0.34; };
-    if (a.light) set('light');
+    if (a.light) {
+      set('light');
+      // pressing again before the current strike even lands = mashing
+      if (this.state === 'attack' && this.move && !this.move.counter && this.st < this.move.a0 - 0.02) this.mashed = true;
+      this.lightAt = this.state === 'attack' ? this.st : -1;
+    }
     if (a.heavy) set('heavy');
     if (a.dash) set('dash');
     if (a.jump) set('jump');
@@ -7938,6 +7944,7 @@ class Player {
     this.comboTimer -= dt; if (this.comboTimer <= 0) this.combo = 0;
     this.hurtFlash = Math.max(0, this.hurtFlash - dt * 4);
     this.rushCd = Math.max(0, (this.rushCd || 0) - dt);
+    this.openT = Math.max(0, (this.openT || 0) - dt);
     this.vaultT = Math.max(0, (this.vaultT || 0) - dt); this.vaultCd = Math.max(0, (this.vaultCd || 0) - dt);
     if (this.pursuitT > 0) this.pursuitT -= dt; else if (this.state !== 'pursuit') this.pursuitN = 0;
     // emergent moves: pursuit after a launch, vault off a pillar in mid-air
@@ -8170,8 +8177,10 @@ class Player {
   }
 
   /* ---------------- attacks ---------------- */
-  startAttack(m, air, wish, hasWish) {
+  startAttack(m, air, wish, hasWish, grade = '') {
     this.state = 'attack'; this.st = 0; this.move = m; this.moveHit = false; this.moveAir = air; this.slashDone = false;
+    this.grade = grade; this.mashed = false; this.whiffLag = 0; this.moveBlocked = false;
+    if (grade === 'perfect') FX.ghost(this.rig, 0xffffff);
     if (m.big || m.finisher) { Sfx.hv('heavy', 0.8, 1.4); Sfx.el('swing_heavy', 0.75) || Sfx.P('sfx_swing_heavy', 0.75); } else Sfx.hv('attack', 0.3, 0.7);
     const b = G.boss;
     if (!this.faceBoss(false) && hasWish) this.yaw = yawOf(wish.x, wish.z);
@@ -8251,21 +8260,32 @@ class Player {
     }
     // cancels
     // landing a hit opens the cancel window early
+    // whiffing near the opponent (or getting blocked) costs your string: no strike-cancel, extra recovery
+    const near = G.boss.alive && horizDist(this.pos, G.boss.pos) < 6;
+    const whiffed = (!this.moveHit || this.moveBlocked) && !this.moveAir && near && !m.counter;
     if (t >= (this.moveHit ? Math.min(m.cancel, m.a1 + 0.03) : m.cancel)) {
-      if (this.buf === 'light') {
-        if (!this.moveAir && this.grounded && !m.launcher && !m.counter && backInput(this, wish, wish.lengthSq() > 0.01)) { this.buf = null; return this.startAttack(launcherFor(Hero.id), false, wish, true); }
+      const lightOk = !whiffed && !(this.mashed && t < m.cancel + 0.1);
+      const grade = this.mashed ? 'mash' : (this.moveHit && !this.moveBlocked && this.lightAt >= m.a0 - 0.02) ? 'perfect' : '';
+      if (this.buf === 'light' && lightOk) {
+        if (!this.moveAir && this.grounded && !m.launcher && !m.counter && backInput(this, wish, wish.lengthSq() > 0.01)) { this.buf = null; return this.startAttack(launcherFor(Hero.id), false, wish, true, grade); }
         if (this.counterT > 0 && G.boss.alive) { this.buf = null; return this.startCounter(); }
-        if (!this.moveAir && this.grounded && !m.counter) { this.buf = null; return this.startAttack(this.ms.light[this.comboIdx % this.ms.light.length], false, wish, wish.lengthSq() > 0.01); }
-        if (this.moveAir && this.airHits < this.ms.air.length) { this.buf = null; return this.startAttack(this.ms.air[this.airHits], true, wish, wish.lengthSq() > 0.01); }
+        if (!this.moveAir && this.grounded && !m.counter) { this.buf = null; return this.startAttack(this.ms.light[this.comboIdx % this.ms.light.length], false, wish, wish.lengthSq() > 0.01, grade); }
+        if (this.moveAir && this.airHits < this.ms.air.length) { this.buf = null; return this.startAttack(this.ms.air[this.airHits], true, wish, wish.lengthSq() > 0.01, grade); }
       }
-      if (this.buf === 'heavy') { this.buf = null; if (this.grounded) { this.state = 'charge'; this.st = 0; this.chargeLv = 0; return; } return this.startSlam(wish, wish.lengthSq() > 0.01); }
-      if (this.buf === 'dash' && (this.grounded || this.airDashes < this.ms.airDashes)) { this.buf = null; this.toMove(); return this.startDash(wish, wish.lengthSq() > 0.01); }
-      if (this.buf === 'block' && this.grounded && !this.moveAir && this.blockCd <= 0) { this.buf = null; return this.startBlock(); }
-      if (this.buf === 'jump' && (this.grounded || this.jumps < 2)) { this.toMove(); return; }
+      if (this.buf === 'heavy' && !whiffed) { this.buf = null; if (this.grounded) { this.state = 'charge'; this.st = 0; this.chargeLv = 0; return; } return this.startSlam(wish, wish.lengthSq() > 0.01); }
+      if (this.buf === 'dash' && (this.grounded || this.airDashes < this.ms.airDashes) && (!whiffed || t >= m.dur)) { this.buf = null; this.toMove(); return this.startDash(wish, wish.lengthSq() > 0.01); }
+      if (this.buf === 'block' && !whiffed && this.grounded && !this.moveAir && this.blockCd <= 0) { this.buf = null; return this.startBlock(); }
+      if (this.buf === 'jump' && !whiffed && (this.grounded || this.jumps < 2)) { this.toMove(); return; }
       if (this.buf === 'special' && this.flow >= 100) { this.buf = null; return this.startSpecial(); }
     }
-    if (t >= m.dur) { if (m.finisher) this.comboIdx = 0; this.toMove(); }
+    if (t >= m.dur) {
+      if (whiffed && !this.whiffLag) { this.whiffLag = m.big || m.finisher ? 0.28 : 0.13; this.comboIdx = 0; }
+      if (t >= m.dur + this.whiffLag) { if (m.finisher) this.comboIdx = 0; this.toMove(); }
+      else { this.rig.setPose(HERO_POSES.idle, 6); this.vel.x = damp(this.vel.x, 0, 10, dt); this.vel.z = damp(this.vel.z, 0, 10, dt); }
+    }
   }
+  // stuck in the end of a move: a hit here is a punish
+  recovering() { return (this.state === 'attack' && this.move && !this.move.counter && this.st > this.move.a1 + 0.04) || (this.openT || 0) > 0; }
   tryStrike(m, c, fwd) {
     const b = G.boss;
     if (!b.alive) return;
@@ -8279,8 +8299,12 @@ class Player {
       if (sky) this.vaultT = 0;
       const hdir = m.pull ? new V3(this.pos.x - b.pos.x, 0, this.pos.z - b.pos.z).normalize() : m.aoe ? new V3(b.pos.x - this.pos.x, 0, b.pos.z - this.pos.z).normalize() : fwd.clone();
       if (m.spike && !b.grounded) hdir.y = -1;
-      const res = b.takeDamage(m.dmg * (sky ? 1.8 : 1), m.post * (sky ? 2 : 1), hp, hdir, { big: m.big || sky, src: 'melee', counter: m.counter, pull: m.pull, spike: m.spike, knock: sky ? 14 : m.counter ? 11 : m.pull ? m.pull : m.knock != null ? m.knock : m.finisher ? 15 : null });
+      const stale = Tempo.mult(m), gm = (this.grade === 'perfect' ? 1.2 : this.grade === 'mash' ? 0.85 : 1) * stale;
+      this.meterMult = gm; this.hitLabel = this.grade === 'perfect' ? 'PERFECT' : stale < 0.9 ? 'STALE' : ''; this.hitKind = this.grade === 'perfect' ? 'gold' : stale < 0.9 ? 'stale' : '';
+      const res = b.takeDamage(m.dmg * (sky ? 1.8 : 1) * gm, m.post * (sky ? 2 : 1) * gm, hp, hdir, { big: m.big || sky, src: 'melee', counter: m.counter, pull: m.pull, spike: m.spike, knock: sky ? 14 : m.counter ? 11 : m.pull ? m.pull : m.knock != null ? m.knock : m.finisher ? 15 : null });
       if (res) this.onDealtHit(res, hp, fwd, m.big || sky, sky ? 0.14 : m.counter ? 0.16 : m.big ? 0.1 : 0.06, sky ? 'skyfall' : m.counter ? 'counter' : m.finisher ? 'finisher' : m.launcher ? 'launcher' : '');
+      if (res) { Tempo.land(m); if (this.grade === 'perfect') Tempo.perfect(this, hp); else if (stale < 0.9) Tempo.stale(hp); }
+      this.meterMult = 1; this.hitLabel = ''; this.hitKind = '';
       if (res && sky) Moment.fire('SKYFALL', 'PILLAR VAULT → AIR STRIKE', hp, fwd, 2);
     }
   }
@@ -8310,14 +8334,15 @@ class Player {
       FX.fovKick -= 6; FX.shockwave(point, 0.45, 1.2); FX.sfxWord(point, false);
       Cam.dutch((Math.random() < 0.5 ? -1 : 1) * 0.07);
     } else FX.fovKick -= 1.2;
-    const label = { counter: 'COUNTER', finisher: 'FINISHER', splat: 'WALL SPLAT', slam: 'CRASH', reflect: 'RETURN', rush: 'GALE RUSH', pursuit: 'PURSUIT', skyfall: 'SKYFALL', topple: 'TOPPLE', launcher: 'LAUNCH' }[tag] || '';
-    FX.dmgNumber(point, res.dmg, tag === 'counter' || tag === 'splat' ? 'gold' : big ? 'big' : '', label);
+    const label = this.hitLabel || { counter: 'COUNTER', finisher: 'FINISHER', splat: 'WALL SPLAT', slam: 'CRASH', reflect: 'RETURN', rush: 'GALE RUSH', pursuit: 'PURSUIT', skyfall: 'SKYFALL', topple: 'TOPPLE', launcher: 'LAUNCH' }[tag] || '';
+    FX.dmgNumber(point, res.dmg, tag === 'counter' || tag === 'splat' ? 'gold' : this.hitKind || (big ? 'big' : ''), label);
     if (tag === 'counter' || tag === 'finisher' || tag === 'splat') {
       Cam.impactShot(point, dir, tag === 'splat' ? 0.9 : 0.7);
       slowmo(0.22, tag === 'counter' ? 0.5 : 0.38);
       FX.shockwave(point, 0.7, 1.6, 0.6);
     }
-    this.gainFlow(big ? 6 : 3.5); Burst.gain(this, big ? 3 : 1.5);
+    const mm = this.meterMult || 1;
+    this.gainFlow((big ? 6 : 3.5) * mm); Burst.gain(this, (big ? 3 : 1.5) * mm);
     this.combo++; this.comboTimer = 2.2; this.comboDmg = (this.combo === 1 ? 0 : (this.comboDmg || 0)) + res.dmg;
     G.stats.maxCombo = Math.max(G.stats.maxCombo, this.combo);
     if (res.broke) this.gainFlow(15);
@@ -8530,6 +8555,11 @@ class Player {
     if (gr) return gr;
     if (kind === 'burst') kind = 'heavy';
     if (this.state === 'guardbreak') dmg = Math.round(dmg * 1.25);
+    if (this.recovering() && kind !== 'chip') {
+      dmg = Math.round(dmg * 1.2);
+      FX.popup(this.chest().add(new V3(0, 1.3, 0)), 'PUNISHED', 'tag', Render.camera); Sfx.P('sfx_hit_crit', 0.7);
+      if (src === 'pvp' && Duel.active) Duel.send({ t: 'pun' });
+    }
     if (Kit.armored(this) && kind !== 'launch' && this.hp > dmg * 0.5) {
       // stoneskin: take half, keep swinging
       dmg = Math.round(dmg * 0.5); this.hp -= dmg; this.hurtFlash = 0.6; G.stats.dmgTaken += dmg;
@@ -10509,7 +10539,7 @@ const FlameTrail = {
 };
 
 /* ---------------- block / parry / guard break ---------------- */
-const GUARD_MAX = 100, PARRY_WIN = 0.16;
+const GUARD_MAX = 100, PARRY_WIN = 0.2;
 const Guard = {
   // returns '' when the hit should go through normally
   check(p, dmg, dir, kind, src) {
@@ -10740,6 +10770,36 @@ const Arena = {
 const TIERS = [[1450, 'ASCENDANT', '#ffd84a'], [1300, 'PARAGON', '#c58cff'], [1150, 'WARDEN', '#5ad1ff'], [1050, 'ADEPT', '#7be08a'], [-1e9, 'INITIATE', '#c8bca8']];
 function tierOf(r) { for (const t of TIERS) if ((+r || 0) >= t[0]) return { name: t[1], color: t[2], min: t[0] }; return { name: 'INITIATE', color: '#c8bca8', min: 0 }; }
 function tierTag(r) { const t = tierOf(r); return `<span class="tier" style="color:${t.color}">${t.name}</span>`; }
+
+'use strict';
+/* ============================================================
+   Anti-mash: timing over speed, stale moves, punishes.
+   ============================================================ */
+const Tempo = {
+  recent: [], decayT: 0,
+  reset() { this.recent.length = 0; this.decayT = 0; },
+  // how many times this exact move landed among the last hits
+  count(m) { let n = 0; for (const x of this.recent) if (x === m) n++; return n; },
+  // one repeat is free, then each repeat takes 12% off (floor 55%)
+  mult(m) { const n = this.count(m); return n <= 1 ? 1 : Math.max(0.55, 1 - (n - 1) * 0.12); },
+  land(m) { this.recent.push(m); if (this.recent.length > 16) this.recent.shift(); this.decayT = 2.5; },
+  update(dt) { if (this.recent.length && (this.decayT -= dt) <= 0) { this.recent.shift(); this.decayT = 1.2; } },
+  // feedback
+  perfect(p, at) {
+    Sfx.ting(2900); Sfx.P('sfx_hit_crit', 0.35);
+    FX.star(at, 2.6, 0xffffff, 0.12); FX.ringBill(at, 2.6, 0xffffff, 0.16);
+    Render.post.flash = Math.max(Render.post.flash, 0.08);
+    G.stats.perfects = (G.stats.perfects || 0) + 1;
+  },
+  stale(at) { Sfx.P('sfx_deflect', 0.25, { rate: 0.6 }); },
+  // we hit someone stuck in recovery
+  punish(at) {
+    Sfx.P('sfx_hit_crit', 0.9) || Sfx.boom(0.6); Sfx.ting(1500);
+    FX.popup(at.clone().add(new V3(0, 1.3, 0)), 'PUNISH!', 'break', Render.camera);
+    FX.impactLines(at, 18, 0xffe27a, 4, 0.2); Render.post.flash = Math.max(Render.post.flash, 0.15); FX.shake(0.4);
+    G.stats.punishes = (G.stats.punishes || 0) + 1;
+  },
+};
 
 'use strict';
 /* ============================================================
@@ -11037,7 +11097,14 @@ const Duel = {
         if (res === 'parried') this.send({ t: 'parried' });
         break;
       }
-      case 'miss': FX.popup(Opp.chest().add(new V3(0, 0.9, 0)), m.why === 'dodged' ? 'DODGED' : 'BLOCKED', 'tag small', Render.camera); break;
+      case 'pun': Tempo.punish(Opp.chest()); break;
+      case 'miss':
+        // our strike was blocked: the string is broken, and a blocked big hit leaves us wide open
+        if (m.why === 'blocked' && p.state === 'attack' && p.move) {
+          p.moveBlocked = true;
+          if ((p.move.big || p.move.finisher) && !p.move.armor) { p.state = 'hit'; p.st = 0; p.stunDur = 0.42; p.openT = 0.5; p.vel.set(-p.fwd().x * 3, p.vel.y, -p.fwd().z * 3); FX.popup(p.chest().add(new V3(0, 1.1, 0)), 'OPEN!', 'tag small', Render.camera); }
+        }
+        FX.popup(Opp.chest().add(new V3(0, 0.9, 0)), m.why === 'dodged' ? 'DODGED' : 'BLOCKED', 'tag small', Render.camera); break;
       case 'parried': {
         // our strike was parried: we're thrown off balance and open to their counter
         if (!p.alive) break;
@@ -11338,13 +11405,18 @@ const BotAI = {
     const os = o.puppet.state, t = G.time;
     // ---- defence: the human starts a move close by -> maybe dodge after a human-like delay
     const threat = dist < 4.8 && ['attack', 'special', 'slam', 'counter', 'pursuit', 'dash'].includes(os) && os !== 'dash';
-    // a parry earns a counter: take it
+    // the human is stuck in recovery right next to us: punish
+    if (o.puppet.state === 'hit' && dist < 3 && (p.state === 'move' || p.state === 'block') && (this.punT || 0) < t && Math.random() < D.chase) { this.punT = t + 0.6; a.light = true; this.steer(a, ux, uz); return a; }
+        // a parry earns a counter: take it
     if (p.state === 'parry') { if (p.st > 0.04) { a.light = true; this.steer(a, ux, uz); } return a; }
     if (threat) {
       if (this.threatT < 0) {
         this.threatT = t; this.dodged = false;
+        // the more the human keeps swinging, the more the bot reads it and guards
+        this.pressure = (this.pressure || 0) * Math.exp(-(t - (this.lastThreat || 0)) / 4) + 1; this.lastThreat = t;
+        const pp = D.parry > 0 ? D.parry + Math.min(0.25, (this.pressure - 1) * 0.05) : 0, pb = D.block + Math.min(0.2, (this.pressure - 1) * 0.04);
         const r = Math.random();
-        this.defMode = r < D.parry ? 'parry' : r < D.parry + D.block ? 'block' : Math.random() < D.dodge ? 'dodge' : 'none';
+        this.defMode = r < pp ? 'parry' : r < pp + pb ? 'block' : Math.random() < D.dodge ? 'dodge' : 'none';
         this.willDodge = this.defMode === 'dodge';
       }
       if (this.defMode === 'parry' && t - this.threatT > 0.03) { a.block = true; this.holdBlockT = t + 0.25; return a; }
@@ -12092,7 +12164,7 @@ G.reset = function () {
   World.mixTarget = 0; World.mix = 0.0001; World.applyPalette(0); World.resetEnv(); Render.waves = [];
   Object.assign(Render.post, { impact: 0, aberr: 0, speed: 0, flash: 0, tintAmt: 0, lowHp: 0 });
   Cam.cine = null; Cam.shotQ = null; G.won = false; Cam.roll = 0;
-  Awaken.reset(); Kit.reset(); Blitz.reset(); FlameTrail.reset(); ['sfx_charge_loop', 'sfx_beam_loop', 'sfx_aura_loop'].forEach(k => Sfx.loopOff(k)); BeamStruggle.end(BeamStruggle.st); Sfx.musicRestore && Sfx.musicRestore();
+  Awaken.reset(); Kit.reset(); Blitz.reset(); FlameTrail.reset(); Tempo.reset(); ['sfx_charge_loop', 'sfx_beam_loop', 'sfx_aura_loop'].forEach(k => Sfx.loopOff(k)); BeamStruggle.end(BeamStruggle.st); Sfx.musicRestore && Sfx.musicRestore();
   ['heroCard', 'vsCard', 'nameCard'].forEach(id => $(id) && $(id).classList.remove('show'));
   $('endPanel').className = 'panel';
   if (G.state !== 'title') $('hud').classList.add('show');
@@ -12253,7 +12325,7 @@ function main() {
       else { Duel.mirror = Duel.active; G.player.update(pdt, a); Duel.mirror = false; G.boss.update(Duel.active ? sim : bdt); }
       Duel.tick(raw);
       for (const p of G.proj) { p.update(p.owner === 'boss' ? bdt : pdt, Render.camera); if (!p.dead && p.owner === 'boss') Graze.check(p, G.player); }
-      ProjClash.update(); Arena.update(pdt);
+      ProjClash.update(); Arena.update(pdt); Tempo.update(pdt);
       for (let i = G.proj.length - 1; i >= 0; i--) if (G.proj[i].dead) G.proj.splice(i, 1);
       // wind cancels fire: player projectiles destroy fireballs
       for (const p of G.proj) if (p.owner === 'player' && !p.dead && p.kind !== 'fireball') for (const q of G.proj) if (q.owner === 'boss' && !q.dead && p.pos.distanceTo(q.pos) < p.r + q.r) { q.explode(); Sfx.deflect(); G.player.gainFlow(4); }
@@ -12296,5 +12368,5 @@ window.addEventListener('load', () => {
 });
 
 </script>
-<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1115-2154</div></body>
+<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1115-2221</div></body>
 </html>

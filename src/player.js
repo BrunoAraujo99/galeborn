@@ -41,7 +41,12 @@ class Player {
   bufferInputs(a) {
     if (!this.alive || G.state !== 'fight') return;
     const set = n => { this.buf = n; this.bufT = 0.34; };
-    if (a.light) set('light');
+    if (a.light) {
+      set('light');
+      // pressing again before the current strike even lands = mashing
+      if (this.state === 'attack' && this.move && !this.move.counter && this.st < this.move.a0 - 0.02) this.mashed = true;
+      this.lightAt = this.state === 'attack' ? this.st : -1;
+    }
     if (a.heavy) set('heavy');
     if (a.dash) set('dash');
     if (a.jump) set('jump');
@@ -71,6 +76,7 @@ class Player {
     this.comboTimer -= dt; if (this.comboTimer <= 0) this.combo = 0;
     this.hurtFlash = Math.max(0, this.hurtFlash - dt * 4);
     this.rushCd = Math.max(0, (this.rushCd || 0) - dt);
+    this.openT = Math.max(0, (this.openT || 0) - dt);
     this.vaultT = Math.max(0, (this.vaultT || 0) - dt); this.vaultCd = Math.max(0, (this.vaultCd || 0) - dt);
     if (this.pursuitT > 0) this.pursuitT -= dt; else if (this.state !== 'pursuit') this.pursuitN = 0;
     // emergent moves: pursuit after a launch, vault off a pillar in mid-air
@@ -303,8 +309,10 @@ class Player {
   }
 
   /* ---------------- attacks ---------------- */
-  startAttack(m, air, wish, hasWish) {
+  startAttack(m, air, wish, hasWish, grade = '') {
     this.state = 'attack'; this.st = 0; this.move = m; this.moveHit = false; this.moveAir = air; this.slashDone = false;
+    this.grade = grade; this.mashed = false; this.whiffLag = 0; this.moveBlocked = false;
+    if (grade === 'perfect') FX.ghost(this.rig, 0xffffff);
     if (m.big || m.finisher) { Sfx.hv('heavy', 0.8, 1.4); Sfx.el('swing_heavy', 0.75) || Sfx.P('sfx_swing_heavy', 0.75); } else Sfx.hv('attack', 0.3, 0.7);
     const b = G.boss;
     if (!this.faceBoss(false) && hasWish) this.yaw = yawOf(wish.x, wish.z);
@@ -384,21 +392,32 @@ class Player {
     }
     // cancels
     // landing a hit opens the cancel window early
+    // whiffing near the opponent (or getting blocked) costs your string: no strike-cancel, extra recovery
+    const near = G.boss.alive && horizDist(this.pos, G.boss.pos) < 6;
+    const whiffed = (!this.moveHit || this.moveBlocked) && !this.moveAir && near && !m.counter;
     if (t >= (this.moveHit ? Math.min(m.cancel, m.a1 + 0.03) : m.cancel)) {
-      if (this.buf === 'light') {
-        if (!this.moveAir && this.grounded && !m.launcher && !m.counter && backInput(this, wish, wish.lengthSq() > 0.01)) { this.buf = null; return this.startAttack(launcherFor(Hero.id), false, wish, true); }
+      const lightOk = !whiffed && !(this.mashed && t < m.cancel + 0.1);
+      const grade = this.mashed ? 'mash' : (this.moveHit && !this.moveBlocked && this.lightAt >= m.a0 - 0.02) ? 'perfect' : '';
+      if (this.buf === 'light' && lightOk) {
+        if (!this.moveAir && this.grounded && !m.launcher && !m.counter && backInput(this, wish, wish.lengthSq() > 0.01)) { this.buf = null; return this.startAttack(launcherFor(Hero.id), false, wish, true, grade); }
         if (this.counterT > 0 && G.boss.alive) { this.buf = null; return this.startCounter(); }
-        if (!this.moveAir && this.grounded && !m.counter) { this.buf = null; return this.startAttack(this.ms.light[this.comboIdx % this.ms.light.length], false, wish, wish.lengthSq() > 0.01); }
-        if (this.moveAir && this.airHits < this.ms.air.length) { this.buf = null; return this.startAttack(this.ms.air[this.airHits], true, wish, wish.lengthSq() > 0.01); }
+        if (!this.moveAir && this.grounded && !m.counter) { this.buf = null; return this.startAttack(this.ms.light[this.comboIdx % this.ms.light.length], false, wish, wish.lengthSq() > 0.01, grade); }
+        if (this.moveAir && this.airHits < this.ms.air.length) { this.buf = null; return this.startAttack(this.ms.air[this.airHits], true, wish, wish.lengthSq() > 0.01, grade); }
       }
-      if (this.buf === 'heavy') { this.buf = null; if (this.grounded) { this.state = 'charge'; this.st = 0; this.chargeLv = 0; return; } return this.startSlam(wish, wish.lengthSq() > 0.01); }
-      if (this.buf === 'dash' && (this.grounded || this.airDashes < this.ms.airDashes)) { this.buf = null; this.toMove(); return this.startDash(wish, wish.lengthSq() > 0.01); }
-      if (this.buf === 'block' && this.grounded && !this.moveAir && this.blockCd <= 0) { this.buf = null; return this.startBlock(); }
-      if (this.buf === 'jump' && (this.grounded || this.jumps < 2)) { this.toMove(); return; }
+      if (this.buf === 'heavy' && !whiffed) { this.buf = null; if (this.grounded) { this.state = 'charge'; this.st = 0; this.chargeLv = 0; return; } return this.startSlam(wish, wish.lengthSq() > 0.01); }
+      if (this.buf === 'dash' && (this.grounded || this.airDashes < this.ms.airDashes) && (!whiffed || t >= m.dur)) { this.buf = null; this.toMove(); return this.startDash(wish, wish.lengthSq() > 0.01); }
+      if (this.buf === 'block' && !whiffed && this.grounded && !this.moveAir && this.blockCd <= 0) { this.buf = null; return this.startBlock(); }
+      if (this.buf === 'jump' && !whiffed && (this.grounded || this.jumps < 2)) { this.toMove(); return; }
       if (this.buf === 'special' && this.flow >= 100) { this.buf = null; return this.startSpecial(); }
     }
-    if (t >= m.dur) { if (m.finisher) this.comboIdx = 0; this.toMove(); }
+    if (t >= m.dur) {
+      if (whiffed && !this.whiffLag) { this.whiffLag = m.big || m.finisher ? 0.28 : 0.13; this.comboIdx = 0; }
+      if (t >= m.dur + this.whiffLag) { if (m.finisher) this.comboIdx = 0; this.toMove(); }
+      else { this.rig.setPose(HERO_POSES.idle, 6); this.vel.x = damp(this.vel.x, 0, 10, dt); this.vel.z = damp(this.vel.z, 0, 10, dt); }
+    }
   }
+  // stuck in the end of a move: a hit here is a punish
+  recovering() { return (this.state === 'attack' && this.move && !this.move.counter && this.st > this.move.a1 + 0.04) || (this.openT || 0) > 0; }
   tryStrike(m, c, fwd) {
     const b = G.boss;
     if (!b.alive) return;
@@ -412,8 +431,12 @@ class Player {
       if (sky) this.vaultT = 0;
       const hdir = m.pull ? new V3(this.pos.x - b.pos.x, 0, this.pos.z - b.pos.z).normalize() : m.aoe ? new V3(b.pos.x - this.pos.x, 0, b.pos.z - this.pos.z).normalize() : fwd.clone();
       if (m.spike && !b.grounded) hdir.y = -1;
-      const res = b.takeDamage(m.dmg * (sky ? 1.8 : 1), m.post * (sky ? 2 : 1), hp, hdir, { big: m.big || sky, src: 'melee', counter: m.counter, pull: m.pull, spike: m.spike, knock: sky ? 14 : m.counter ? 11 : m.pull ? m.pull : m.knock != null ? m.knock : m.finisher ? 15 : null });
+      const stale = Tempo.mult(m), gm = (this.grade === 'perfect' ? 1.2 : this.grade === 'mash' ? 0.85 : 1) * stale;
+      this.meterMult = gm; this.hitLabel = this.grade === 'perfect' ? 'PERFECT' : stale < 0.9 ? 'STALE' : ''; this.hitKind = this.grade === 'perfect' ? 'gold' : stale < 0.9 ? 'stale' : '';
+      const res = b.takeDamage(m.dmg * (sky ? 1.8 : 1) * gm, m.post * (sky ? 2 : 1) * gm, hp, hdir, { big: m.big || sky, src: 'melee', counter: m.counter, pull: m.pull, spike: m.spike, knock: sky ? 14 : m.counter ? 11 : m.pull ? m.pull : m.knock != null ? m.knock : m.finisher ? 15 : null });
       if (res) this.onDealtHit(res, hp, fwd, m.big || sky, sky ? 0.14 : m.counter ? 0.16 : m.big ? 0.1 : 0.06, sky ? 'skyfall' : m.counter ? 'counter' : m.finisher ? 'finisher' : m.launcher ? 'launcher' : '');
+      if (res) { Tempo.land(m); if (this.grade === 'perfect') Tempo.perfect(this, hp); else if (stale < 0.9) Tempo.stale(hp); }
+      this.meterMult = 1; this.hitLabel = ''; this.hitKind = '';
       if (res && sky) Moment.fire('SKYFALL', 'PILLAR VAULT → AIR STRIKE', hp, fwd, 2);
     }
   }
@@ -443,14 +466,15 @@ class Player {
       FX.fovKick -= 6; FX.shockwave(point, 0.45, 1.2); FX.sfxWord(point, false);
       Cam.dutch((Math.random() < 0.5 ? -1 : 1) * 0.07);
     } else FX.fovKick -= 1.2;
-    const label = { counter: 'COUNTER', finisher: 'FINISHER', splat: 'WALL SPLAT', slam: 'CRASH', reflect: 'RETURN', rush: 'GALE RUSH', pursuit: 'PURSUIT', skyfall: 'SKYFALL', topple: 'TOPPLE', launcher: 'LAUNCH' }[tag] || '';
-    FX.dmgNumber(point, res.dmg, tag === 'counter' || tag === 'splat' ? 'gold' : big ? 'big' : '', label);
+    const label = this.hitLabel || { counter: 'COUNTER', finisher: 'FINISHER', splat: 'WALL SPLAT', slam: 'CRASH', reflect: 'RETURN', rush: 'GALE RUSH', pursuit: 'PURSUIT', skyfall: 'SKYFALL', topple: 'TOPPLE', launcher: 'LAUNCH' }[tag] || '';
+    FX.dmgNumber(point, res.dmg, tag === 'counter' || tag === 'splat' ? 'gold' : this.hitKind || (big ? 'big' : ''), label);
     if (tag === 'counter' || tag === 'finisher' || tag === 'splat') {
       Cam.impactShot(point, dir, tag === 'splat' ? 0.9 : 0.7);
       slowmo(0.22, tag === 'counter' ? 0.5 : 0.38);
       FX.shockwave(point, 0.7, 1.6, 0.6);
     }
-    this.gainFlow(big ? 6 : 3.5); Burst.gain(this, big ? 3 : 1.5);
+    const mm = this.meterMult || 1;
+    this.gainFlow((big ? 6 : 3.5) * mm); Burst.gain(this, (big ? 3 : 1.5) * mm);
     this.combo++; this.comboTimer = 2.2; this.comboDmg = (this.combo === 1 ? 0 : (this.comboDmg || 0)) + res.dmg;
     G.stats.maxCombo = Math.max(G.stats.maxCombo, this.combo);
     if (res.broke) this.gainFlow(15);
@@ -663,6 +687,11 @@ class Player {
     if (gr) return gr;
     if (kind === 'burst') kind = 'heavy';
     if (this.state === 'guardbreak') dmg = Math.round(dmg * 1.25);
+    if (this.recovering() && kind !== 'chip') {
+      dmg = Math.round(dmg * 1.2);
+      FX.popup(this.chest().add(new V3(0, 1.3, 0)), 'PUNISHED', 'tag', Render.camera); Sfx.P('sfx_hit_crit', 0.7);
+      if (src === 'pvp' && Duel.active) Duel.send({ t: 'pun' });
+    }
     if (Kit.armored(this) && kind !== 'launch' && this.hp > dmg * 0.5) {
       // stoneskin: take half, keep swinging
       dmg = Math.round(dmg * 0.5); this.hp -= dmg; this.hurtFlash = 0.6; G.stats.dmgTaken += dmg;

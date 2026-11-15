@@ -199,7 +199,7 @@ const FlameTrail = {
 };
 
 /* ---------------- block / parry / guard break ---------------- */
-const GUARD_MAX = 100, PARRY_WIN = 0.16;
+const GUARD_MAX = 100, PARRY_WIN = 0.2;
 const Guard = {
   // returns '' when the hit should go through normally
   check(p, dmg, dir, kind, src) {

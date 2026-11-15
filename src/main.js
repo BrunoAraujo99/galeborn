@@ -221,7 +221,7 @@ G.reset = function () {
   World.mixTarget = 0; World.mix = 0.0001; World.applyPalette(0); World.resetEnv(); Render.waves = [];
   Object.assign(Render.post, { impact: 0, aberr: 0, speed: 0, flash: 0, tintAmt: 0, lowHp: 0 });
   Cam.cine = null; Cam.shotQ = null; G.won = false; Cam.roll = 0;
-  Awaken.reset(); Kit.reset(); Blitz.reset(); FlameTrail.reset(); ['sfx_charge_loop', 'sfx_beam_loop', 'sfx_aura_loop'].forEach(k => Sfx.loopOff(k)); BeamStruggle.end(BeamStruggle.st); Sfx.musicRestore && Sfx.musicRestore();
+  Awaken.reset(); Kit.reset(); Blitz.reset(); FlameTrail.reset(); Tempo.reset(); ['sfx_charge_loop', 'sfx_beam_loop', 'sfx_aura_loop'].forEach(k => Sfx.loopOff(k)); BeamStruggle.end(BeamStruggle.st); Sfx.musicRestore && Sfx.musicRestore();
   ['heroCard', 'vsCard', 'nameCard'].forEach(id => $(id) && $(id).classList.remove('show'));
   $('endPanel').className = 'panel';
   if (G.state !== 'title') $('hud').classList.add('show');
@@ -382,7 +382,7 @@ function main() {
       else { Duel.mirror = Duel.active; G.player.update(pdt, a); Duel.mirror = false; G.boss.update(Duel.active ? sim : bdt); }
       Duel.tick(raw);
       for (const p of G.proj) { p.update(p.owner === 'boss' ? bdt : pdt, Render.camera); if (!p.dead && p.owner === 'boss') Graze.check(p, G.player); }
-      ProjClash.update(); Arena.update(pdt);
+      ProjClash.update(); Arena.update(pdt); Tempo.update(pdt);
       for (let i = G.proj.length - 1; i >= 0; i--) if (G.proj[i].dead) G.proj.splice(i, 1);
       // wind cancels fire: player projectiles destroy fireballs
       for (const p of G.proj) if (p.owner === 'player' && !p.dead && p.kind !== 'fireball') for (const q of G.proj) if (q.owner === 'boss' && !q.dead && p.pos.distanceTo(q.pos) < p.r + q.r) { q.explode(); Sfx.deflect(); G.player.gainFlow(4); }
