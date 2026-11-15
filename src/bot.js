@@ -8,9 +8,9 @@
    ============================================================ */
 const IS_BOT = location.hash === '#bot';
 const BOT_DIFF = {
-  easy:   { react: 0.42, dodge: 0.22, combo: [1, 3], pause: [0.9, 1.7], heavy: 0.10, air: 0.10, ult: 0.15, recover: 0.2, chase: 0.25, name: 'EASY' },
-  normal: { react: 0.28, dodge: 0.5,  combo: [2, 4], pause: [0.5, 1.1], heavy: 0.2,  air: 0.2,  ult: 0.4,  recover: 0.5, chase: 0.55, name: 'NORMAL' },
-  hard:   { react: 0.16, dodge: 0.8,  combo: [3, 4], pause: [0.2, 0.55], heavy: 0.3, air: 0.3,  ult: 0.8,  recover: 0.85, chase: 0.9, name: 'HARD' },
+  easy:   { react: 0.42, dodge: 0.22, combo: [1, 3], pause: [0.9, 1.7], heavy: 0.10, air: 0.10, ult: 0.15, recover: 0.2, chase: 0.25, block: 0.15, parry: 0, name: 'EASY' },
+  normal: { react: 0.28, dodge: 0.5,  combo: [2, 4], pause: [0.5, 1.1], heavy: 0.2,  air: 0.2,  ult: 0.4,  recover: 0.5, chase: 0.55, block: 0.3, parry: 0.1, name: 'NORMAL' },
+  hard:   { react: 0.16, dodge: 0.8,  combo: [3, 4], pause: [0.2, 0.55], heavy: 0.3, air: 0.3,  ult: 0.8,  recover: 0.85, chase: 0.9, block: 0.35, parry: 0.35, name: 'HARD' },
 };
 const BOT_NAMES = { wind: 'TAVI', fire: 'SOREN', earth: 'BRANNOC', water: 'YSRA' };
 
@@ -87,7 +87,7 @@ const BotAI = {
       G.lockOn = true;
     });
   },
-  blank() { return { mx: 0, my: 0, cx: 0, cy: 0, jump: false, dash: false, light: false, heavy: false, heavyHeld: false, special: false, lock: false, pause: false, confirm: false, restart: false, mute: false, help: false, any: false, up: false, down: false, left: false, right: false, accept: false, back: false }; },
+  blank() { return { mx: 0, my: 0, cx: 0, cy: 0, jump: false, dash: false, light: false, heavy: false, heavyHeld: false, block: false, special: false, lock: false, pause: false, confirm: false, restart: false, mute: false, help: false, any: false, up: false, down: false, left: false, right: false, accept: false, back: false }; },
   // world-space direction -> stick input relative to this page's camera
   steer(a, wx, wz) {
     const l = Math.hypot(wx, wz); if (l < 1e-4) return;
@@ -104,14 +104,24 @@ const BotAI = {
     const os = o.puppet.state, t = G.time;
     // ---- defence: the human starts a move close by -> maybe dodge after a human-like delay
     const threat = dist < 4.8 && ['attack', 'special', 'slam', 'counter', 'pursuit', 'dash'].includes(os) && os !== 'dash';
+    // a parry earns a counter: take it
+    if (p.state === 'parry') { if (p.st > 0.04) { a.light = true; this.steer(a, ux, uz); } return a; }
     if (threat) {
-      if (this.threatT < 0) { this.threatT = t; this.willDodge = Math.random() < D.dodge; this.dodged = false; }
+      if (this.threatT < 0) {
+        this.threatT = t; this.dodged = false;
+        const r = Math.random();
+        this.defMode = r < D.parry ? 'parry' : r < D.parry + D.block ? 'block' : Math.random() < D.dodge ? 'dodge' : 'none';
+        this.willDodge = this.defMode === 'dodge';
+      }
+      if (this.defMode === 'parry' && t - this.threatT > 0.03) { a.block = true; this.holdBlockT = t + 0.25; return a; }
+      if (this.defMode === 'block' && t - this.threatT > D.react * 0.7) { a.block = true; this.holdBlockT = t + 0.35; return a; }
       if (this.willDodge && !this.dodged && t - this.threatT > D.react && (p.state === 'move' || p.state === 'attack')) {
         this.dodged = true; a.dash = true; this.steer(a, -uz * this.strafe - ux * 0.4, ux * this.strafe - uz * 0.4);
         this.nextAtk = t + 0.12; this.comboLeft = 0;
         return a;
       }
     } else this.threatT = -1;
+    if (p.state === 'block' && t < (this.holdBlockT || 0)) { a.block = true; return a; }
     // incoming projectile -> sidestep
     for (const q of G.proj) {
       if (q.owner !== 'ghost' || q.dead || this.seenProj.has(q)) continue;

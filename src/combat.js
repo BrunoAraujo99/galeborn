@@ -27,7 +27,7 @@ class Projectile {
     this.r = o.r; this.owner = o.owner; this.dmg = o.dmg; this.post = o.post || 0;
     this.life = o.life; this.kind = o.kind; this.hits = o.hits || 1; this.tick = o.tick || 0;
     this.tickT = 0; this.dead = false; this.age = 0; this.dodged = false; this.reflected = false;
-    this.grav = o.grav || 0;
+    this.grav = o.grav || 0; this.knock = o.knock || null; this.big0 = !!o.big;
     this.obj = new THREE.Group();
     this.obj.position.copy(this.pos);
     Render.scene.add(this.obj);
@@ -56,6 +56,25 @@ class Projectile {
       this.cyl2.scale.setScalar(0.7);
       this.obj.add(this.cyl, this.cyl2);
       this.glow = new THREE.Mesh(FX.planeGeo, glowMaterial(0x80ffff, 0.8)); this.glow.scale.setScalar(this.r * 5); this.obj.add(this.glow);
+      this.obj.lookAt(this.pos.clone().add(this.vel));
+    } else if (k === 'firebolt') {
+      this.core = new THREE.Mesh(new THREE.SphereGeometry(this.r * 0.6, 10, 8), new THREE.MeshBasicMaterial({ color: 0xfff2c0 }));
+      const tail = new THREE.ConeGeometry(this.r * 0.7, this.r * 4, 10, 1, true); tail.rotateX(-Math.PI / 2); tail.translate(0, 0, -this.r * 2);
+      this.shell = new THREE.Mesh(tail, new THREE.MeshBasicMaterial({ color: 0xff7a18, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }));
+      this.glow = new THREE.Mesh(FX.planeGeo, glowMaterial(0xff8a30, 0.9)); this.glow.scale.setScalar(this.r * 5);
+      this.obj.add(this.core, this.shell, this.glow);
+      this.obj.lookAt(this.pos.clone().add(this.vel));
+    } else if (k === 'boulder') {
+      const g = new THREE.DodecahedronGeometry(this.r, 0);
+      this.rock = new THREE.Mesh(g, toon(0x8a7560));
+      this.rock.userData.ownGeo = true;
+      this.obj.add(this.rock);
+    } else if (k === 'jet') {
+      this.swirl = swirlMaterial(0xf0ffff, 0x2a7cff, { twist: 4, speed: 10, bands: 4, edge: 0.2, opacity: 1 });
+      const g = new THREE.CylinderGeometry(this.r * 0.45, this.r * 0.9, 5, 16, 1, true); g.rotateX(Math.PI / 2);
+      this.cyl = new THREE.Mesh(g, this.swirl);
+      this.glow = new THREE.Mesh(FX.planeGeo, glowMaterial(0x60b0ff, 0.8)); this.glow.scale.setScalar(this.r * 4);
+      this.obj.add(this.cyl, this.glow);
       this.obj.lookAt(this.pos.clone().add(this.vel));
     }
   }
@@ -94,6 +113,15 @@ class Projectile {
       this.cyl.rotation.z += dt * 12;
       if (dt > 0) FX.burst(this.pos, 4, { speed: 6, life: 0.35, s0: 0.35, c0: C.white, c1: C.wind, jitter: this.r });
       const sc = Math.min(1, this.age * 8); this.obj.scale.setScalar(sc);
+    } else if (k === 'firebolt') {
+      if (dt > 0) FX.add_.spawn(this.pos.x + rand(-0.15, 0.15), this.pos.y + rand(-0.15, 0.15), this.pos.z + rand(-0.15, 0.15), -this.vel.x * 0.08, rand(0, 1.2), -this.vel.z * 0.08, 0.3, this.r * 1.4, 0.05, C.fireHot, C.ember, 2, -1);
+    } else if (k === 'boulder') {
+      this.rock.rotation.x += dt * 9; this.rock.rotation.y += dt * 4;
+      if (dt > 0 && Math.random() < 0.5) FX.burst(this.pos, 1, { speed: 2, life: 0.5, s0: 0.4, s1: 0.9, c0: C.dust, c1: C.dust, add: false, alpha: 0.4 });
+    } else if (k === 'jet') {
+      this.swirl.uniforms.time.value += dt;
+      if (dt > 0) FX.burst(this.pos, 3, { speed: 5, life: 0.35, s0: 0.3, c0: C.white, c1: C.windDeep, jitter: this.r, grav: 12 });
+      const sc = Math.min(1, this.age * 10); this.obj.scale.setScalar(sc);
     }
     // collisions
     const b = G.boss, p = G.player;
@@ -107,13 +135,14 @@ class Projectile {
     } else if (this.owner === 'player' && b.alive) {
       const d = segPointDist(this.pos, b.capA, b.capB);
       if (d < this.r + b.radius) {
+        if (k === 'jet' && !this.slowed) { this.slowed = true; this.vel.multiplyScalar(0.25); this.life += 0.25; }
         this.tickT -= dt;
         if (this.tickT <= 0) {
           this.tickT = this.tick;
           const dir = this.vel.clone().setY(0).normalize();
-          const big = this.reflected || (k === 'lance' && this.hits === 1);
-          const res = b.takeDamage(this.dmg, this.post, this.pos, dir, { big, src: k });
-          if (res) G.player.onDealtHit(res, this.pos.clone(), dir, big, k === 'lance' ? 0.04 : big ? 0.09 : 0.05, this.reflected ? 'reflect' : '');
+          const big = this.reflected || this.big0 || ((k === 'lance' || k === 'jet') && this.hits === 1);
+          const res = b.takeDamage(this.dmg, this.post, this.pos, dir, { big, src: k, knock: this.knock });
+          if (res) G.player.onDealtHit(res, this.pos.clone(), dir, big, (k === 'lance' || k === 'jet') && !big ? 0.04 : big ? 0.09 : 0.05, this.reflected ? 'reflect' : '');
           if (res && this.reflected) Moment.fire('RETURN TO SENDER', 'HIS OWN FLAME', this.pos.clone(), dir, 2);
           this.hits--;
           if (this.hits <= 0) return this.explode();
@@ -122,7 +151,7 @@ class Projectile {
     }
     const PL = World.pillarAt(this.pos, this.r * 0.8);
     if (PL) {
-      const d = this.vel.clone().setY(0).normalize(); World.hitPillar(PL, k === 'lance' ? 70 : k === 'gust' ? 15 : this.reflected ? 60 : 34, d, this.pos);
+      const d = this.vel.clone().setY(0).normalize(); World.hitPillar(PL, k === 'lance' || k === 'boulder' ? 70 : k === 'gust' || k === 'firebolt' ? 15 : k === 'jet' ? 30 : this.reflected ? 60 : 34, d, this.pos);
       // your wind brings a pillar down on him
       if (this.owner === 'player' && !this.netGhost && PL.broken && b.alive && Math.hypot(b.pos.x - PL.x, b.pos.z - PL.z) < PL.r + b.radius + 3.5) {
         const dir = new V3(b.pos.x - PL.x, 0, b.pos.z - PL.z).normalize();
@@ -137,7 +166,8 @@ class Projectile {
   explode(quiet) {
     if (this.dead) return;
     this.dead = true;
-    const fire = this.kind === 'fireball' && !this.reflected;
+    const fire = (this.kind === 'fireball' || this.kind === 'firebolt') && !this.reflected;
+    if (this.kind === 'boulder' && !quiet) { World.spawnDebris(this.pos.clone(), 6, 1.0, 'floor'); FX.burst(this.pos, 16, { speed: 6, life: 0.8, s0: 0.6, s1: 1.4, c0: C.dust, c1: C.dust, add: false, alpha: 0.5 }); FX.shake(0.35); Sfx.boom(0.6); }
     if (!quiet || this.kind === 'lance') {
       FX.burst(this.pos, fire ? 26 : 30, { speed: fire ? 9 : 12, life: 0.45, s0: 0.45, c0: fire ? C.fireHot : C.white, c1: fire ? C.ember : C.wind, drag: 4 });
       if (fire) FX.burst(this.pos, 8, { speed: 2, life: 0.9, s0: 0.8, s1: 1.8, c0: C.smokeL, c1: C.smoke, add: false, alpha: 0.4, up: 1.5 });

@@ -68,7 +68,7 @@ const Kit = {
   armored(p) {
     if (Hero.id !== 'earth') return false;
     const S = p.state;
-    return (S === 'attack' && p.move && (p.move.big || p.move.finisher)) || S === 'charge' || S === 'release' || S === 'slam' || S === 'slamLand';
+    return (S === 'attack' && p.move && (p.move.big || p.move.finisher || p.move.armor)) || (S === 'dash' && p.dashKind === 'charge') || S === 'charge' || S === 'release' || S === 'slam' || S === 'slamLand';
   },
   // ---- earth: stone spikes erupt (ring or single)
   spikeAt(at, n = 1, dir) {

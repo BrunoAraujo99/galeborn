@@ -336,6 +336,7 @@ const Input = {
       light: mp.has(0) || kp.has('KeyJ'),
       heavy: mp.has(2) || kp.has('KeyK'),
       heavyHeld: !!(this.mb[2] || k.KeyK),
+      block: !!k.KeyF,
       special: kp.has('KeyE') || kp.has('KeyL'),
       lock: kp.has('KeyQ') || mp.has(1),
       pause: kp.has('Escape') || kp.has('KeyP'),
@@ -360,7 +361,8 @@ const Input = {
       if (Math.abs(lx) + Math.abs(ly) > 0) { a.mx = lx; a.my = -ly; }
       a.cx += rx * 0.05; a.cy += ry * 0.035;
       a.jump = a.jump || pr(0);
-      a.dash = a.dash || pr(1) || pr(4) || pr(6);
+      a.dash = a.dash || pr(1) || pr(6);
+      a.block = a.block || b(4);
       a.light = a.light || pr(2);
       a.heavy = a.heavy || pr(3);
       a.heavyHeld = a.heavyHeld || b(3);

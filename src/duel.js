@@ -83,7 +83,7 @@ const Opp = {
     const p = G.player;
     const mult = (p.awake ? 1.3 : 1) * (o.src === 'burn' ? 1 : Hero.def.stats.dmg) * PVP_SCALE;
     const d = Math.max(1, Math.round(dmg * mult));
-    const k = o.src === 'burn' ? 'chip' : o.src === 'special' && o.noFlinch ? 'held' : o.big && (o.knock || 0) >= 9 ? 'launch' : o.big ? 'heavy' : 'light';
+    const k = o.src === 'burn' ? 'chip' : o.pull ? 'pull' : o.spike ? 'spike' : o.src === 'special' && o.noFlinch ? 'held' : o.big && (o.knock || 0) >= 9 ? 'launch' : o.big ? 'heavy' : 'light';
     Duel.send({ t: 'hit', d, k, dir: [r3(dir.x), r3(dir.z)] });
     this.hp = Math.max(0, this.hp - d); this.puppet.hp = this.hp;
     return { dmg: d, broke: false };
@@ -171,10 +171,22 @@ const Duel = {
         }
         const res = p.tryHit(m.d, dir, m.k === 'held' ? 'light' : m.k, 'pvp');
         if (m.k === 'held' && res === 'hit') { p.stunDur = 0.45; p.vel.set(0, p.vel.y, 0); }
-        if (res === 'dodged' || res === 'immune') this.send({ t: 'miss', why: res });
+        if (res === 'dodged' || res === 'immune' || res === 'blocked') this.send({ t: 'miss', why: res });
+        if (res === 'parried') this.send({ t: 'parried' });
         break;
       }
       case 'miss': FX.popup(Opp.chest().add(new V3(0, 0.9, 0)), m.why === 'dodged' ? 'DODGED' : 'BLOCKED', 'tag small', Render.camera); break;
+      case 'parried': {
+        // our strike was parried: we're thrown off balance and open to their counter
+        if (!p.alive) break;
+        Sfx.loopOff('sfx_charge_loop'); for (const k in p.trails) p.trails[k].emit = false;
+        p.state = 'hit'; p.st = 0; p.stunDur = 0.62; p.move = null; p.vel.set(0, Math.min(p.vel.y, 0), 0);
+        const c = p.chest().lerp(Opp.chest(), 0.4);
+        FX.popup(c.clone().add(new V3(0, 0.9, 0)), 'PARRIED', 'break', Render.camera); FX.star(c, 3.5, 0xffffff, 0.2);
+        Sfx.P('sfx_deflect', 0.9) || Sfx.ting(2200); FX.shake(0.35); Render.post.aberr = 1;
+        break;
+      }
+      case 'gb': FX.popup(Opp.chest().add(new V3(0, 1.1, 0)), 'GUARD BREAK', 'break', Render.camera); Sfx.P('sfx_posture_break', 0.9) || Sfx.boom(0.6); FX.shake(0.3); break;
       case 'fx': { const f = FX[m.f]; if (f) { this.mirror = false; f.apply(FX, m.a.map(deserArg)); } break; }
       case 'pr': G.proj.push(new Projectile({ pos: new V3(...m.pos), vel: new V3(...m.vel), r: m.r, owner: 'ghost', dmg: 0, life: m.life, kind: m.kind })); break;
       case 'cut': CutIn.play(Opp.rig, 'boss', m.name, m.sub, 1.1); FX.speedBg(1.1, true); break;

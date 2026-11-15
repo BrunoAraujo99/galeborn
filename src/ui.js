@@ -50,7 +50,8 @@ const BINDS = {
   move: { kb: [K('W') + K('A') + K('S') + K('D')], pad: [PAD.LS] },
   camera: { kb: [Icons.mouse('move')], pad: [PAD.RS] },
   jump: { kb: [K('Space')], pad: [PAD.A] },
-  dash: { kb: [K('Shift')], pad: [PAD.B, PAD.LB] },
+  dash: { kb: [K('Shift')], pad: [PAD.B, PAD.LT] },
+  block: { kb: [K('F')], pad: [PAD.LB] },
   light: { kb: [Icons.mouse('L'), K('J')], pad: [PAD.X] },
   heavy: { kb: [Icons.mouse('R'), K('K')], pad: [PAD.Y] },
   special: { kb: [K('E')], pad: [PAD.RB, PAD.RT] },
@@ -75,7 +76,7 @@ const FLOW_C = 2 * Math.PI * 34;
 const HUD = {
   init() {
     this.el = {
-      hp: $('php'), hpLag: $('phplag'), flow: $('pflow'), flowBox: $('pbars'), bhp: $('bhp'), bhpLag: $('bhplag'), post: $('bpost'), bbar: $('bossbar'), pbar: $('pbar'),
+      hp: $('php'), hpLag: $('phplag'), flow: $('pflow'), flowBox: $('pbars'), bhp: $('bhp'), bhpLag: $('bhplag'), post: $('bpost'), bbar: $('bossbar'), pbar: $('pbar'), gbar: $('pgbar'), guard: $('pguard'),
       combo: $('combo'), comboN: $('comboN'), comboR: $('comboR'), comboD: $('comboD'), banner: $('banner'), reticle: $('reticle'), hud: $('hud'), bossbar: $('bossbar'),
       lockTag: $('locktag'), ring: $('flowRingFg'), prompt: $('prompt'), sub: $('subtitle'), pip2: $('pip2'), postRow: $('postRow'),
     };
@@ -118,6 +119,9 @@ const HUD = {
     this.hpLag = hpk < this.hpLag ? damp(this.hpLag, hpk, 3, dt) : hpk;
     e.hp.style.width = (hpk * 100) + '%'; e.hpLag.style.width = (this.hpLag * 100) + '%';
     e.flow.style.width = p.flow + '%';
+    const gk = (p.guard ?? GUARD_MAX) / GUARD_MAX;
+    e.guard.style.width = (gk * 100) + '%';
+    e.gbar.classList.toggle('full', gk >= 0.999 && p.state !== 'block'); e.gbar.classList.toggle('low', gk < 0.35); e.gbar.classList.toggle('broken', p.state === 'guardbreak');
     e.ring.style.strokeDashoffset = FLOW_C * (1 - p.flow / 100);
     e.flowBox.classList.toggle('ready', p.flow >= 100);
     const bk = b.hp / b.maxHp;

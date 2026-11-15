@@ -40,7 +40,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0b12; col
 #pbars { position: absolute; left: 24px; bottom: 24px; width: min(360px, calc(100% - 48px)); }
 #pbars .name { font-weight: 900; letter-spacing: 0.18em; font-size: 14px; text-shadow: 2px 2px 0 var(--ink); }
 #phplag { background: #fff; } #php { background: linear-gradient(180deg, #8affc8, #18a870); }
-#flowbox { height: 10px; } #pflow { background: linear-gradient(90deg, var(--wind2), var(--wind)); }
+#flowbox { height: 10px; }
+.bar.gbar { height: 6px; border-width: 1px; margin-top: 3px; width: 70%; transition: opacity .3s; } #pguard { background: linear-gradient(90deg, #cfe6ff, #ffffff); right: auto; width: 100%; }
+.bar.gbar.full { opacity: .35; } .bar.gbar.low #pguard { background: linear-gradient(90deg, #ff8a3a, #ffc070); } .bar.gbar.broken #pguard { background: #ff3a3a; } .bar.gbar.broken { animation: barhit .18s infinite; } #pflow { background: linear-gradient(90deg, var(--wind2), var(--wind)); }
 #flowbox.ready { box-shadow: 0 0 14px var(--wind); border-color: #fff; animation: pulse .6s infinite alternate; }
 #flowlabel { font-size: 11px; letter-spacing: 0.2em; margin-top: 3px; color: var(--wind); opacity: 0.6; }
 #flowbox.ready + #flowlabel { opacity: 1; text-shadow: 0 0 8px var(--wind); }
@@ -324,6 +326,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
     <div class="pmain">
       <div class="name" id="pname">TAVI <small>WIND DANCER</small></div>
       <div class="bar" id="pbar"><div id="phplag"></div><div id="php"></div><div class="ticks"></div><div class="shine"></div></div>
+      <div class="bar gbar" id="pgbar"><div id="pguard"></div></div>
       <div class="bar flowbar"><div id="pflow"></div><div class="segs"></div></div>
       <div id="flowlabel"><span class="ic" data-act="special"></span><span id="ultLbl">TEMPEST</span></div>
     </div>
@@ -358,6 +361,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
     <div><b>Gale (hold)</b><span class="ic" data-act="heavy"></span></div>
     <div><b>Ultimate</b><span class="ic" data-act="special"></span></div>
     <div><b>Lock-on</b><span class="ic" data-act="lock"></span></div>
+    <div><b>Block (tap = parry)</b><span class="ic" data-act="block"></span></div>
   </div>
   <div class="tip">Dodge at the last instant to trigger a <b style="color:var(--wind)">Flow Step</b>: time slows and your next strike teleports you into a counter. Strike fireballs to send them back. Break his posture for big damage. H shows controls, M mutes.</div>
 </div>
@@ -371,6 +375,7 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
   <div><b>Gale (hold)</b><span class="ic" data-act="heavy"></span></div><div><b>Gale Rush</b><span class="ic" data-act="dash"></span><i class="or">then</i><span class="ic" data-act="light"></span></div>
   <div><b>Dive slam</b><i class="or">in air</i><span class="ic" data-act="heavy"></span></div><div><b>Tempest</b><span class="ic" data-act="special"></span></div>
   <div><b>Lock-on</b><span class="ic" data-act="lock"></span></div><div><b>Recover</b><i class="or">when launched</i><span class="ic" data-act="dash"></span></div>
+  <div><b>Block</b><span class="ic" data-act="block"></span></div><div><b>Parry</b><i class="or">tap just before a hit</i><span class="ic" data-act="block"></span></div>
   <div><b>Pause</b><span class="ic" data-act="pause"></span></div><div><b>Mute / help</b><span class="ic" data-act="mute"></span><span class="ic" data-act="help"></span></div>
 </div>
 <div id="clickLock">CLICK TO CAPTURE MOUSE</div>

@@ -221,7 +221,7 @@ G.reset = function () {
   World.mixTarget = 0; World.mix = 0.0001; World.applyPalette(0); World.resetEnv(); Render.waves = [];
   Object.assign(Render.post, { impact: 0, aberr: 0, speed: 0, flash: 0, tintAmt: 0, lowHp: 0 });
   Cam.cine = null; Cam.shotQ = null; G.won = false; Cam.roll = 0;
-  Awaken.reset(); Kit.reset(); Blitz.reset(); ['sfx_charge_loop', 'sfx_beam_loop', 'sfx_aura_loop'].forEach(k => Sfx.loopOff(k)); BeamStruggle.end(BeamStruggle.st); Sfx.musicRestore && Sfx.musicRestore();
+  Awaken.reset(); Kit.reset(); Blitz.reset(); FlameTrail.reset(); ['sfx_charge_loop', 'sfx_beam_loop', 'sfx_aura_loop'].forEach(k => Sfx.loopOff(k)); BeamStruggle.end(BeamStruggle.st); Sfx.musicRestore && Sfx.musicRestore();
   ['heroCard', 'vsCard', 'nameCard'].forEach(id => $(id) && $(id).classList.remove('show'));
   $('endPanel').className = 'panel';
   if (G.state !== 'title') $('hud').classList.add('show');
@@ -375,7 +375,7 @@ function main() {
         const pl = G.player;
         if (pl.alive && pl.hp < 30) { G.beatT = (G.beatT || 0) - raw; if (G.beatT <= 0) { G.beatT = 0.85; if (!Sfx.P('sfx_heartbeat', 0.8, { jitter: false })) { Sfx.tone('sine', 60, 40, 0.12, 0.5); Sfx.tone('sine', 55, 38, 0.12, 0.4, 0.18); } } if (!G.saidLow) { G.saidLow = true; HUD.say(Hero.def.name, Hero.def.lines.low, 2.2); } }
       }
-      if (G.state === 'fight') { Awaken.check(); Awaken.update(pdt); Kit.update(pdt); }
+      if (G.state === 'fight') { Awaken.check(); Awaken.update(pdt); Kit.update(pdt); FlameTrail.update(pdt); }
       G.player.bufferInputs(a);
       Blitz.tick(raw);
       if (Blitz.active) Blitz.update(raw);
