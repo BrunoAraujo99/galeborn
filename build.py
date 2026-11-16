@@ -41,6 +41,10 @@ for f in audio: shutil.copy(f,f'{web}/audio/')
 w=page('\nconst ASSET_WEB=true;\nconst AUDIO_LIST='+json.dumps([os.path.splitext(os.path.basename(f))[0] for f in audio])+';\n')
 open(web+'/index.html','w').write(w)
 shutil.copy('dist/galeborn.html',web+'/galeborn-offline.html')
+# SEO files (robots, sitemap, icons, share image, manifest) served from the site root
+if os.path.isdir('seo'):
+    shutil.copytree('seo',web,dirs_exist_ok=True)
+    sm=web+'/sitemap.xml'; smx=__import__('re').sub(r'<lastmod>[^<]*</lastmod>','<lastmod>'+datetime.date.today().isoformat()+'</lastmod>',open(sm).read()); open(sm,'w').write(smx)
 print('web page',len(w))
 # 3) PC build: page + data scripts in galeborn_data/ (each under the 25 MB device copy limit, works from file://)
 pc='dist/pc'; shutil.rmtree(pc,ignore_errors=True); os.makedirs(pc+'/galeborn_data')
