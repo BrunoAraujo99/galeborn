@@ -1,0 +1,23 @@
+const { chromium } = require('playwright');
+const S = '/tmp/claude-0/-home-claude/45214761-3904-53f4-8044-d56d16cf60da/scratchpad/pillars2/';
+(async () => {
+  const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--allow-file-access-from-files'] });
+  const page = await b.newPage({ viewport: { width: 1280, height: 720 } });
+  const errs = []; page.on('pageerror', e => errs.push(e.message));
+  await page.goto('file:///home/claude/duel/dist/pc/galeborn.html');
+  await page.waitForFunction(() => window.__G && __G.player.rig.model, null, { timeout: 90000 });
+  await page.evaluate(() => { Quality.set('high'); Quality.tick = () => {}; Settings.v.drs = false; });
+  await page.waitForTimeout(3000);
+  await page.click('#botBtn'); await page.waitForTimeout(800);
+  await page.evaluate(() => Select.confirm()); await page.waitForTimeout(500);
+  await page.click('[data-bot="easy"]');
+  await page.waitForFunction(() => __G.state === 'fight', null, { timeout: 120000 });
+  await page.addStyleTag({ content: '#endPanel{display:none !important} #hud,#bossbar{opacity:0 !important}' });
+  await page.evaluate(() => { BotAI.update = () => {}; Cam.update = () => {}; Arena.set('galespire'); Arena.roundStart(); });
+  await page.waitForTimeout(4000);
+  await page.evaluate(() => { const P = World.dpillars[3]; World.hitPillar(P, 200, new THREE.Vector3(1, 0, 0), new THREE.Vector3(P.x, 2, P.z)); const c = Render.camera; const a = Math.atan2(P.z, P.x); c.position.set(Math.cos(a) * 1, 3.5, Math.sin(a) * 1); c.lookAt(P.x, 1, P.z); });
+  await page.waitForTimeout(1500); await page.screenshot({ path: S + 'fly.png' }); await page.waitForFunction(() => FX.list.length < 3 && World.debris.every(d => d.rest || d.drum), null, { timeout: 120000 }).catch(() => {}); await page.screenshot({ path: S + 'stump.png' });
+  await page.evaluate(() => { const P = World.dpillars[3]; const q = new THREE.Vector3(P.x * 0.6, 0, P.z * 0.6); Opp.pos.set(-10, 0, 0); Kit.spikeAt(q, 1); Kit.spikeAt(q.clone().multiplyScalar(0.8), 6); FX.shakeT = 0; });
+  await page.waitForFunction(() => G.time > 0, null); const t0 = await page.evaluate(() => G.time); await page.waitForFunction(t0 => G.time > t0 + 0.5, t0, { timeout: 60000 }); await page.screenshot({ path: S + 'spike.png' });
+  console.log('ERR', errs.join('\n')); await b.close();
+})();

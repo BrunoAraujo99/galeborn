@@ -472,6 +472,8 @@ const World = {
     const wp = new V3();
     P.drums.forEach((d, i) => {
       if (i === 0 && P.stump) { d.visible = false; P.stump.visible = true; return; }
+      // sliced model chunks are open at the cuts: their outline shell would show through, so drop it while they fly
+      if (P.skin) d.traverse(o => { if (o.userData.isOutline) o.visible = false; });
       if (i === 0) { d.scale.y = 0.55; d.position.y -= d.geometry.parameters.height * 0.22; return; }
       d.getWorldPosition(wp);
       const q = new THREE.Quaternion(); d.getWorldQuaternion(q);

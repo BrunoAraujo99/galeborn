@@ -7802,6 +7802,8 @@ const World = {
     const wp = new V3();
     P.drums.forEach((d, i) => {
       if (i === 0 && P.stump) { d.visible = false; P.stump.visible = true; return; }
+      // sliced model chunks are open at the cuts: their outline shell would show through, so drop it while they fly
+      if (P.skin) d.traverse(o => { if (o.userData.isOutline) o.visible = false; });
       if (i === 0) { d.scale.y = 0.55; d.position.y -= d.geometry.parameters.height * 0.22; return; }
       d.getWorldPosition(wp);
       const q = new THREE.Quaternion(); d.getWorldQuaternion(q);
@@ -11364,13 +11366,15 @@ const Stage = {
     });
   },
   // unit-height model -> geometry at a target height, footprint capped so it still matches the collision circle
-  fit(M, h, wmax) { const g = M.geo.clone(), xz = Math.min(h, wmax / Math.max(M.w, M.d, 1e-3)); g.scale(xz, h, xz); return g; },
+  fit(M, h, wmax, wmin = 0) { const g = M.geo.clone(), wd = Math.max(M.w, M.d, 1e-3), xz = Math.max(Math.min(h, wmax / wd), wmin / wd); g.scale(xz, h, xz); return g; },
   pillarKit(id) {
     if (this.pkit[id]) return this.pkit[id];
-    return (this.pkit[id] = Promise.all(['pillar_a', 'pillar_b', 'pillar_stump'].map(k => this.model(id + '/' + k))).then(([A, B, S]) => {
+    return (this.pkit[id] = Promise.all(['pillar_a', 'pillar_b', 'pillar_stump', 'pillar_stump_b'].map(k => this.model(id + '/' + k))).then(([A, B, S, SB]) => {
       if (!A) return null;
-      const vars = [A, B || A].map(M => ({ map: M.mat.map, bands: this.slice(this.fit(M, this.PILLAR_H, this.PILLAR_W), this.BANDS) }));
-      return { vars, stump: S ? { geo: this.fit(S, this.STUMP_H, this.PILLAR_W), map: S.mat.map } : null };
+      const stump = M => M ? { geo: this.fit(M, this.STUMP_H, this.PILLAR_W, 1.9), map: M.mat.map } : null;
+      // never thinner than the collision circle (r 1.0), never wider than the old base
+      const vars = [[A, S], [B || A, SB || S]].map(([M, St]) => ({ map: M.mat.map, bands: this.slice(this.fit(M, this.PILLAR_H, this.PILLAR_W, 2.0), this.BANDS), stump: stump(St) }));
+      return { vars };
     }));
   },
   skinPillar(P, i, kit) {
@@ -11382,7 +11386,7 @@ const Stage = {
       m.userData.home = { p: m.position.clone(), q: m.quaternion.clone(), parent: P.group }; m.visible = false; P.group.add(m); drums.push(m);
     }
     let stump = null;
-    if (kit.stump) { stump = new THREE.Mesh(kit.stump.geo, toon(0xffffff, { map: kit.stump.map })); stump.quaternion.copy(q); stump.castShadow = stump.receiveShadow = true; addOutline(stump, 0.035); stump.visible = false; P.group.add(stump); stump.material.transparent = true; }
+    if (v.stump) { stump = new THREE.Mesh(v.stump.geo, toon(0xffffff, { map: v.stump.map })); stump.quaternion.copy(q); stump.castShadow = stump.receiveShadow = true; addOutline(stump, 0.035); stump.visible = false; P.group.add(stump); stump.material.transparent = true; }
     return { drums, mats: [mat].concat(stump ? [stump.material] : []), stump };
   },
   // switch every pillar between its procedural look and this arena's model (pillars must be standing)
@@ -11494,7 +11498,7 @@ const Stage = {
     return {
       pal: { fog: 0xd0607a, hemiS: 0xff9ac0, hemiG: 0x5a2a6a, sunC: 0xffb886, cloud: 0xffb0c8, top: 0x1c0b48, mid: 0xc8307e, hor: 0xffaa5a, sun: 0xfff0c0 },
       sunI: 2.4, hemiI: 1.15, sunPos: [-22, 20, -14], fog: [45, 260], floorSide: 0x5a2a3a,
-      pillar: [0xb02a3a, 0x2a1430, 0xffd27a], exposure: 1,
+      pillar: [0xb02a3a, 0x2a1430, 0xffd27a], debris: 0xc8a888, exposure: 1,
     };
   },
   placeholderGates(G0, gates) {
@@ -11537,7 +11541,7 @@ const Stage = {
     return {
       pal: { fog: 0x262c60, hemiS: 0x7a88ff, hemiG: 0x2a1040, sunC: 0xa8d8ff, cloud: 0x5a6898, top: 0x05071a, mid: 0x26307a, hor: 0x5a5aa8, sun: 0xdde8ff },
       sunI: 2.5, hemiI: 1.25, sunPos: [18, 26, -16], fog: [35, 220], floorSide: 0x1a1d33,
-      pillar: [0x2e3352, 0x161a30, 0x3df2ff], storm: true,
+      pillar: [0x2e3352, 0x161a30, 0x3df2ff], debris: 0x3c4466, storm: true,
     };
   },
   strike(pos) {
@@ -11582,7 +11586,7 @@ const Stage = {
     return {
       pal: { fog: 0xb8c4f0, hemiS: 0xb0caff, hemiG: 0x6a74c8, sunC: 0xffe0c0, cloud: 0xf0e0ff, top: 0x14205a, mid: 0x8aaef8, hor: 0xfde8f0, sun: 0xfff0e0 },
       sunI: 2.3, hemiI: 1.3, sunPos: [-20, 16, -18], fog: [45, 260], floorSide: 0x9aaee8,
-      pillar: [0x9ad8f0, 0xf4f8ff, 0x8a6ad8],
+      pillar: [0x9ad8f0, 0xf4f8ff, 0x8a6ad8], debris: 0xcfe6f2,
     };
   },
 
@@ -11599,6 +11603,7 @@ const Stage = {
     this.pillarKit(id).then(kit => { if (this.cur === id && this.pillarsFor !== id) { this.pillarsFor = id; this.applyPillars(id, kit); } });
     for (const P of World.dpillars) { const ms = P.proc ? P.proc.mats : P.mats; ms[0].color.set(cfg.pillar[0]); ms[1].color.set(cfg.pillar[1]); }
     for (const P of World.dpillars) if (P.rune) P.rune.material.color.set(cfg.pillar[2]);
+    if (cfg.debris && World.stoneMat) World.stoneMat.color.set(cfg.debris);
     return cfg;
   },
   update(dt) {
@@ -13620,5 +13625,5 @@ window.addEventListener('load', () => {
 });
 
 </script>
-<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1116-1409</div></body>
+<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1116-1429</div></body>
 </html>
