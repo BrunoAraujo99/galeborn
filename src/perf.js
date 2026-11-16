@@ -110,6 +110,7 @@ const Perf = {
     }
     this.anch = null;
     for (const P of World.dpillars) this.mergePillar(P);
+    this.ready = true;
     if (!World._perfWrapped) {
       World._perfWrapped = true;
       const hit = World.hitPillar, reset = World.resetEnv;
@@ -124,7 +125,7 @@ const Perf = {
     P.group.updateMatrixWorld(true);
     const inv = P.group.matrixWorld.clone().invert(), by = new Map();
     P.group.traverse(o => {
-      if (!o.isMesh || o.userData.batched || !o.visible || Array.isArray(o.material) || !o.geometry.attributes.normal) return;
+      if (!o.isMesh || o.userData.batched || !o.visible || (o.parent !== P.group && !o.parent.visible) || Array.isArray(o.material) || !o.geometry.attributes.normal) return;
       const key = o.material.uuid + '|' + o.castShadow + o.receiveShadow + (o.userData.isOutline ? 'o' : '');
       if (!by.has(key)) by.set(key, []);
       by.get(key).push(o);

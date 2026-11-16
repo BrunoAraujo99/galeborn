@@ -42,3 +42,22 @@ w=page('\nconst ASSET_WEB=true;\nconst AUDIO_LIST='+json.dumps([os.path.splitext
 open(web+'/index.html','w').write(w)
 shutil.copy('dist/galeborn.html',web+'/galeborn-offline.html')
 print('web page',len(w))
+# 3) PC build: page + data scripts in galeborn_data/ (each under the 25 MB device copy limit, works from file://)
+pc='dist/pc'; shutil.rmtree(pc,ignore_errors=True); os.makedirs(pc+'/galeborn_data')
+parts=[('heroes',''.join(f'\nconst HERO_{h.upper()}_B64="'+base64.b64encode(open(f'assets/heroes/{h}.glb','rb').read()).decode()+'";\n' for h in HEROES)),
+       ('arenas','const ARENA_B64='+json.dumps({akey(f):base64.b64encode(open(f,'rb').read()).decode() for f in ARENA_GLB})+';\n')]
+# audio split into chunks that each stay well under the limit
+chunk,n,acc={},1,0
+def flush(c,i): parts.append((f'audio{i}','Object.assign(window.AUDIO_B64=window.AUDIO_B64||{},'+json.dumps(c)+');\n'))
+for f in audio:
+    k=os.path.splitext(os.path.basename(f))[0]; v=base64.b64encode(open(f,'rb').read()).decode()
+    if acc+len(v)>18_000_000: flush(chunk,n); chunk,n,acc={},n+1,0
+    chunk[k]=v; acc+=len(v)
+if chunk: flush(chunk,n)
+for name,js in parts:
+    assert len(js)<24_000_000, name
+    open(f'{pc}/galeborn_data/{name}.js','w').write(js)
+tags=''.join(f'<script src="galeborn_data/{name}.js?b={BUILD_ID}"></script>' for name,_ in parts)
+pchtml=page('\nconst PC_SPLIT=true;\n').replace('<script>\n'+game,tags+'<script>\nvar AUDIO_B64=window.AUDIO_B64||{};\n'+game,1)
+open(pc+'/galeborn.html','w').write(pchtml)
+print('pc page',len(pchtml),'parts',[(n,len(j)) for n,j in parts])

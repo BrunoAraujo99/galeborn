@@ -471,6 +471,7 @@ const World = {
     Sfx.crumble(); FX.shake(0.6);
     const wp = new V3();
     P.drums.forEach((d, i) => {
+      if (i === 0 && P.stump) { d.visible = false; P.stump.visible = true; return; }
       if (i === 0) { d.scale.y = 0.55; d.position.y -= d.geometry.parameters.height * 0.22; return; }
       d.getWorldPosition(wp);
       const q = new THREE.Quaternion(); d.getWorldQuaternion(q);
@@ -492,13 +493,14 @@ const World = {
     for (const c of this.craters) { this.scene.remove(c); c.material.dispose(); }
     this.craters.length = 0;
     for (const P of this.dpillars) {
-      P.broken = false; P.hp = 100; P.r = 1.0; P.rune.visible = true;
+      P.broken = false; P.hp = 100; P.r = 1.0; P.rune.visible = !P.skin;
+      if (P.stump) P.stump.visible = false;
       P.group.position.set(P.x, 0, P.z);
       P.group.traverse(o => {});
       for (const d of P.drums) {
         const h = d.userData.home;
         if (d.parent !== P.group) { if (d.parent) d.parent.remove(d); P.group.add(d); }
-        d.position.copy(h.p); d.quaternion.copy(h.q); d.scale.set(1, 1, 1);
+        d.position.copy(h.p); d.quaternion.copy(h.q); d.scale.set(1, 1, 1); d.visible = true;
       }
     }
   },

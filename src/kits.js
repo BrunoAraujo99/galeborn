@@ -7,6 +7,7 @@
    ============================================================ */
 const _kv = new V3();
 function spikeMesh(h, r) {
+  const sm = typeof Stage !== 'undefined' && Stage.spikeMesh(h, r); if (sm) return sm;
   const g = new THREE.ConeGeometry(r, h, 5, 1);
   g.translate(0, h / 2, 0);
   const m = new THREE.Mesh(g, toon(0x8a7a5a));

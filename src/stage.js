@@ -7,7 +7,7 @@
    ============================================================ */
 const STAGE_OF = { ruins: 'sunset', moonwell: 'storm', galespire: 'snow' };
 const Stage = {
-  groups: {}, cur: null, models: {}, sky: null, skyTex: {}, floorTex: {}, flashT: 0, t: 0,
+  groups: {}, cur: null, models: {}, pkit: {}, sky: null, skyTex: {}, floorTex: {}, flashT: 0, t: 0,
   // hide the old sky-ruins scenery; keep the dais, destructible pillars, boss fire ring and lights
   init(pre) {
     const keep = new Set([World.top, World.fireRing, World.sun && World.sun.target]);
@@ -16,6 +16,7 @@ const Stage = {
     const mat = new THREE.MeshBasicMaterial({ side: THREE.BackSide, fog: false, depthWrite: false });
     this.sky = new THREE.Mesh(new THREE.SphereGeometry(450, 48, 24), mat); this.sky.renderOrder = -10; this.sky.frustumCulled = false;
     Render.scene.add(this.sky);
+    for (const k of ['fx/spike', 'earth/spike']) this.model(k).then(M => { if (M && !this.spikeM) { this.spikeM = M; M.mat.userData.shared = true; } });
     // boss phase 2 palette shift also warms the painted sky
     const ap = World.applyPalette.bind(World);
     World.applyPalette = k => { ap(k); if (this.sky) this.sky.material.color.setRGB(1, 1 - 0.45 * k, 1 - 0.6 * k); };
@@ -57,6 +58,70 @@ const Stage = {
   merged(group, parts, mat, o = {}) {
     const geos = parts.map(([geo, x, y, z, rx, ry, rz, sx, sy, sz]) => { const g = geo.index ? geo.toNonIndexed() : geo.clone(); g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)), new THREE.Vector3(sx || 1, sy || 1, sz || 1))); if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2)); return g; });
     const m = new THREE.Mesh(mergeGeos(geos), mat); m.castShadow = !!o.shadow; m.receiveShadow = !!o.receive; group.add(m); if (o.outline) addOutline(m, o.outline); return m;
+  },
+  /* ---------- modelled breakable pillars ----------
+     Each arena can ship <arena>/pillar_a, pillar_b and pillar_stump. The model is cut into horizontal
+     bands at load, and the bands are the "drums" the existing crumble code throws, so breaking, collision,
+     vaults and topples behave exactly as before. Missing models keep the procedural pillar. */
+  PILLAR_H: 9.4, PILLAR_W: 2.6, STUMP_H: 1.7, BANDS: 5,
+  slice(geo, n) {
+    const g = geo.index ? geo.toNonIndexed() : geo, P = g.attributes.position, N = g.attributes.normal, U = g.attributes.uv;
+    g.computeBoundingBox(); const y0 = g.boundingBox.min.y, hy = (g.boundingBox.max.y - y0) || 1;
+    const lists = Array.from({ length: n }, () => []);
+    for (let t = 0; t < P.count / 3; t++) { const y = (P.getY(3 * t) + P.getY(3 * t + 1) + P.getY(3 * t + 2)) / 3; lists[Math.min(n - 1, Math.max(0, Math.floor((y - y0) / hy * n)))].push(t); }
+    return lists.filter(l => l.length).map(l => {
+      const k = l.length * 3, pa = new Float32Array(k * 3), na = new Float32Array(k * 3), ua = new Float32Array(k * 2);
+      l.forEach((t, j) => { for (let v = 0; v < 3; v++) { const s = 3 * t + v, d = 3 * j + v; pa.set([P.getX(s), P.getY(s), P.getZ(s)], d * 3); if (N) na.set([N.getX(s), N.getY(s), N.getZ(s)], d * 3); if (U) ua.set([U.getX(s), U.getY(s)], d * 2); } });
+      const b = new THREE.BufferGeometry(); b.setAttribute('position', new THREE.BufferAttribute(pa, 3)); b.setAttribute('normal', new THREE.BufferAttribute(na, 3)); b.setAttribute('uv', new THREE.BufferAttribute(ua, 2));
+      b.computeBoundingBox(); const c = new THREE.Vector3(); b.boundingBox.getCenter(c); b.translate(-c.x, -c.y, -c.z); b.computeBoundingSphere();
+      return { geo: b, c };
+    });
+  },
+  // unit-height model -> geometry at a target height, footprint capped so it still matches the collision circle
+  fit(M, h, wmax) { const g = M.geo.clone(), xz = Math.min(h, wmax / Math.max(M.w, M.d, 1e-3)); g.scale(xz, h, xz); return g; },
+  pillarKit(id) {
+    if (this.pkit[id]) return this.pkit[id];
+    return (this.pkit[id] = Promise.all(['pillar_a', 'pillar_b', 'pillar_stump'].map(k => this.model(id + '/' + k))).then(([A, B, S]) => {
+      if (!A) return null;
+      const vars = [A, B || A].map(M => ({ map: M.mat.map, bands: this.slice(this.fit(M, this.PILLAR_H, this.PILLAR_W), this.BANDS) }));
+      return { vars, stump: S ? { geo: this.fit(S, this.STUMP_H, this.PILLAR_W), map: S.mat.map } : null };
+    }));
+  },
+  skinPillar(P, i, kit) {
+    const v = kit.vars[i % kit.vars.length], mat = toon(0xffffff, { map: v.map }); mat.transparent = true; mat.opacity = 1;
+    const rot = i * 1.7, q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rot), drums = [];
+    for (const b of v.bands) {
+      const m = new THREE.Mesh(b.geo, mat); m.position.copy(b.c).applyQuaternion(q); m.quaternion.copy(q);
+      m.castShadow = m.receiveShadow = true; addOutline(m, 0.035);
+      m.userData.home = { p: m.position.clone(), q: m.quaternion.clone(), parent: P.group }; m.visible = false; P.group.add(m); drums.push(m);
+    }
+    let stump = null;
+    if (kit.stump) { stump = new THREE.Mesh(kit.stump.geo, toon(0xffffff, { map: kit.stump.map })); stump.quaternion.copy(q); stump.castShadow = stump.receiveShadow = true; addOutline(stump, 0.035); stump.visible = false; P.group.add(stump); stump.material.transparent = true; }
+    return { drums, mats: [mat].concat(stump ? [stump.material] : []), stump };
+  },
+  // switch every pillar between its procedural look and this arena's model (pillars must be standing)
+  applyPillars(id, kit) {
+    if (World.dpillars.some(P => P.broken)) World.resetEnv();
+    World.dpillars.forEach((P, i) => {
+      if (typeof Perf !== 'undefined') Perf.unmergePillar(P);
+      if (!P.proc) P.proc = { drums: P.drums, mats: P.mats, parts: P.group.children.filter(o => o.isMesh) };
+      if (P.skin) { for (const d of P.skin.drums) d.visible = false; if (P.skin.stump) P.skin.stump.visible = false; }
+      P.skins = P.skins || {};
+      const sk = kit ? (P.skins[id] = P.skins[id] || this.skinPillar(P, i, kit)) : null;
+      for (const o of P.proc.parts) o.visible = !sk;
+      P.skin = sk; P.drums = sk ? sk.drums : P.proc.drums; P.mats = sk ? sk.mats : P.proc.mats; P.stump = sk ? sk.stump : null;
+      if (sk) for (const d of sk.drums) d.visible = true;
+      P.rune.visible = !sk; P.fade = 1; P.outlineVis = undefined;
+      for (const m of P.mats) { m.opacity = 1; m.depthWrite = true; }
+      if (typeof Perf !== 'undefined' && Perf.ready) Perf.mergePillar(P);
+    });
+  },
+  /* Brannoc's stone spike: shared model geometry, scaled per spike */
+  spikeMesh(h, r) {
+    const M = this.spikeM; if (!M) return null;
+    const m = new THREE.Mesh(M.geo, M.mat), xz = (2 * r) / Math.max(M.w, M.d, 1e-3);
+    m.scale.set(xz, h, xz); m.castShadow = true; addOutline(m, 0.012);
+    return m;
   },
   canvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; },
   tex(c, repeat) { const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; } return t; },
@@ -245,7 +310,9 @@ const Stage = {
     const top = World.top; if (top && Array.isArray(top.material)) { top.material[1].map = this.floorTex[id]; top.material[1].color.set(0xffffff); top.material[1].needsUpdate = true; top.material[0].color.set(cfg.floorSide); top.material[2].color.set(cfg.floorSide); }
     World.sun.intensity = cfg.sunI; World.sun.position.set(...cfg.sunPos); World.hemi.intensity = cfg.hemiI;
     Render.scene.fog.near = cfg.fog[0]; Render.scene.fog.far = cfg.fog[1];
-    for (const P of World.dpillars) { P.mats[0].color.set(cfg.pillar[0]); P.mats[1].color.set(cfg.pillar[1]); if (P.rune) P.rune.material.color.set(cfg.pillar[2]); }
+    this.pillarKit(id).then(kit => { if (this.cur === id && this.pillarsFor !== id) { this.pillarsFor = id; this.applyPillars(id, kit); } });
+    for (const P of World.dpillars) { const ms = P.proc ? P.proc.mats : P.mats; ms[0].color.set(cfg.pillar[0]); ms[1].color.set(cfg.pillar[1]); }
+    for (const P of World.dpillars) if (P.rune) P.rune.material.color.set(cfg.pillar[2]);
     return cfg;
   },
   update(dt) {
