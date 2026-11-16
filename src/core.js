@@ -103,11 +103,12 @@ const Render = {
         lowHp: { value: 0 }, time: { value: 0 }, aspect: { value: 1 },
         sw: { value: [new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4()] },
         tCut: { value: null }, cutAmt: { value: 0 }, cutSlide: { value: 0 }, cutColor: { value: new THREE.Color() },
+        gLift: { value: new THREE.Color(0, 0, 0) }, gGain: { value: new THREE.Color(1, 1, 1) }, vigCol: { value: new THREE.Color(0, 0, 0) },
       },
       vertexShader: FS_VERT,
       fragmentShader: `
         uniform sampler2D tScene, tB0, tB1, tB2; uniform float strength, impact, impactInv, aberr, speed, flash, sat, tintAmt, lowHp, time, aspect;
-        uniform vec3 tint; uniform vec4 sw[4]; uniform sampler2D tCut; uniform float cutAmt, cutSlide; uniform vec3 cutColor; varying vec2 vUv;
+        uniform vec3 tint; uniform vec4 sw[4]; uniform sampler2D tCut; uniform float cutAmt, cutSlide; uniform vec3 cutColor; uniform vec3 gLift, gGain, vigCol; varying vec2 vUv;
         float hash(float n){ return fract(sin(n) * 43758.5453); }
         vec3 softClip(vec3 x){ vec3 o = x - 0.8; return mix(x, 0.8 + o / (1.0 + o / 0.25), step(0.8, x)); }
         void main(){
@@ -159,7 +160,9 @@ const Render = {
             float line = step(0.62, h) * smoothstep(0.5, 0.15, abs(w - 0.5)) * smoothstep(0.28 + h * 0.15, 0.75, r);
             col = mix(col, vec3(1.0), line * speed * 0.75);
           }
-          col *= 1.0 - 0.55 * dot(c, c) * 1.6;
+          col = col * gGain + gLift * (1.0 - clamp(col, 0.0, 1.0));
+          float vg = 0.55 * dot(c, c) * 1.6;
+          col = mix(col, col * vigCol, vg);
           col = mix(col, col * vec3(1.25, 0.25, 0.22), lowHp * smoothstep(0.15, 0.6, r));
           if (impact > 0.001) {
             float l2 = dot(col, vec3(0.299, 0.587, 0.114));
@@ -229,6 +232,7 @@ const Render = {
       r.render(this.scene, this.cut.cam);
     }
     const u = this.compMat.uniforms, p = this.post;
+    if (this.grade) { u.gLift.value.copy(this.grade.lift); u.gGain.value.copy(this.grade.gain); u.vigCol.value.copy(this.grade.vig); }
     u.tCut.value = this.rtCut.texture; u.cutAmt.value = this.cut.amt; u.cutSlide.value = this.cut.slide; u.cutColor.value.copy(this.cut.color);
     u.tScene.value = this.rtScene.texture;
     u.tB0.value = this.levels[0][0].texture;
@@ -261,6 +265,7 @@ function toonGradient() {
   return GRAD;
 }
 // hard anime rim light on a toon material
+const RIM_ARENA = { value: new THREE.Color(1, 1, 1) };
 function addRim(mat, color, strength = 0.6, edge = 0.62) {
   if (mat.userData.rim) return mat;
   mat.userData.rim = true;
@@ -268,10 +273,10 @@ function addRim(mat, color, strength = 0.6, edge = 0.62) {
   mat.onBeforeCompile = (sh, r) => {
     if (prev) prev(sh, r);
     sh.uniforms.rimColor = { value: new THREE.Color(color) };
-    sh.uniforms.rimStr = { value: strength };
-    sh.fragmentShader = 'uniform vec3 rimColor; uniform float rimStr;\n' + sh.fragmentShader.replace('#include <opaque_fragment>',
+    sh.uniforms.rimStr = { value: strength }; sh.uniforms.rimArena = RIM_ARENA;
+    sh.fragmentShader = 'uniform vec3 rimColor; uniform vec3 rimArena; uniform float rimStr;\n' + sh.fragmentShader.replace('#include <opaque_fragment>',
       `float rimF = 1.0 - max(dot(normal, normalize(vViewPosition)), 0.0);
-       outgoingLight += rimColor * step(${edge.toFixed(2)}, rimF) * rimStr;
+       outgoingLight += mix(rimColor, rimArena, 0.45) * step(${edge.toFixed(2)}, rimF) * rimStr;
        #include <opaque_fragment>`);
   };
   mat.customProgramCacheKey = () => 'rim' + color + strength;

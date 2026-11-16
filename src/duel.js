@@ -91,6 +91,8 @@ const Opp = {
     const d = Math.max(1, Math.round(dmg * mult));
     const k = o.src === 'burn' ? 'chip' : o.src === 'burst' ? 'burst' : o.pull ? 'pull' : o.spike ? 'spike' : o.src === 'special' && o.noFlinch ? 'held' : o.big && (o.knock || 0) >= 9 ? 'launch' : o.big ? 'heavy' : 'light';
     Duel.send({ t: 'hit', d, k, dir: [r3(dir.x), r3(dir.z)] });
+    // show the whip right away on our copy of them (their own reaction arrives with the next snapshots)
+    if (k !== 'held') { this.kickSide = -(this.kickSide || 1); kickReact(this.puppet.rig, k === 'light' || k === 'chip' ? 'light' : 'heavy', this.kickSide); }
     this.hp = Math.max(0, this.hp - d); this.puppet.hp = this.hp;
     return { dmg: d, broke: false };
   },
@@ -144,7 +146,7 @@ const Duel = {
     if (!this.bossEmb) this.bossEmb = $('bbEmb').innerHTML; $('bbEmb').innerHTML = heroGlyph(match.opp.hero); NEON.setOpp(match.opp.hero);
     $('postRow').style.display = 'none'; document.body.classList.add('duel');
     document.querySelector('#bossbar small').textContent = odef.name + ' · ' + odef.title + (match.opp.rating ? ' · ' + (isFinite(+match.opp.rating) ? tierOf(match.opp.rating).name + ' ' : '') + match.opp.rating : '');
-    $('title').classList.add('hide'); $('hud').classList.add('show'); $('lobby').classList.remove('show');
+    InkWipe.play(); $('title').classList.add('hide'); $('hud').classList.add('show'); $('lobby').classList.remove('show');
     this.link = new LinkClass(match.id, m => this.rx(m));
     G.state = 'intro'; G.introT = 0;
     Sfx.init(); Sfx.intensity = 0;
@@ -221,13 +223,14 @@ const Duel = {
     if (!this.started) {
       this.helloT -= raw;
       if (this.helloT <= 0 && this.link && this.link.status === 'open') { this.helloT = 0.5; this.send(Object.assign({ t: 'h' }, Progress.hello())); }
-      if (this.gotHello && this.cdT < 0) { this.cdT = 3; HUD.banner('3', 'flow'); Sfx.P('sfx_vs', 0.8); Sfx.stinger('stinger_intro_vs'); }
+      if (this.gotHello && this.cdT < 0) { this.standOff(); this.cdT = 3; HUD.banner('3', 'flow'); Sfx.P('sfx_vs', 0.8); Sfx.stinger('stinger_intro_vs'); }
       if (this.cdT >= 0) {
         const before = Math.ceil(this.cdT); this.cdT -= raw; const after = Math.ceil(this.cdT);
         if (after !== before && after > 0) { HUD.banner(String(after), 'flow'); Sfx.ui(); }
         if (this.cdT <= 0) this.go();
       }
     }
+    this.pace();
     // our snapshot
     this.sendT -= raw;
     if (this.sendT <= 0 && this.link && this.link.status === 'open') {
@@ -245,8 +248,32 @@ const Duel = {
     // opponent vanished
     if ((this.started || this.round > 1) && !this.matchDone && performance.now() - this.lastRx > 8000) { this.ended = false; this.finish(true, 'OPPONENT DISCONNECTED'); }
   },
+  // round opening: a slow side-on shot of the two fighters squaring up while the count runs
+  standOff() {
+    const p = G.player; if (!Opp.puppet) return;
+    const a = p.pos.clone(), b = Opp.pos.clone(), mid = a.clone().add(b).multiplyScalar(0.5).setY(0);
+    const d = b.clone().sub(a).setY(0); if (d.lengthSq() < 0.01) d.set(0, 0, -1); d.normalize();
+    const side = new V3(-d.z, 0, d.x);
+    Cam.cine = null;
+    Cam.shot(3.1, k => {
+      const ang = (k - 0.5) * 0.5, s2 = side.clone().applyAxisAngle(new V3(0, 1, 0), ang);
+      const pos = mid.clone().addScaledVector(s2, 9.5 - k * 2).setY(1.6 + k * 0.4);
+      return { pos, look: mid.clone().setY(1.3), fov: 34 };
+    }, { out: 0.4 });
+  },
+  // fight state each frame: music mood and the final-clash moment at low HP
+  pace() {
+    if (!this.started || this.ended || G.state !== 'fight') return;
+    const p = G.player, lowP = p.hp < p.maxHp * 0.3, lowO = Opp.hp < Opp.maxHp * 0.3;
+    if ((lowP || lowO) && !this.finalClash) {
+      this.finalClash = true; Sfx.intensity = 2;
+      HUD.banner('FINAL CLASH', 'fight'); Sfx.P('sfx_riser', 0.7); Cam.dutch(0.05); Render.post.aberr = 1.2;
+    }
+    const since = G.time - (Cam.lastHitT ?? -9);
+    Sfx.mood(this.finalClash ? 2 : since < 1.4 ? 1 : 0);
+  },
   go() {
-    this.started = true; this.cdT = -1;
+    this.started = true; this.cdT = -1; this.finalClash = false;
     Cam.cine = null; Cam.snapBehind();
     G.state = 'fight'; Sfx.intensity = 1;
     HUD.banner(this.round === 1 ? 'DUEL' : 'FIGHT', 'fight'); Sfx.boom(0.6);
@@ -279,6 +306,8 @@ const Duel = {
     if (!forfeit) this.wins[won ? 0 : 1]++;
     this.renderRounds();
     G.state = 'ending'; G.won = won;
+    // K.O.: a held frame and a beat of silence, then slow motion
+    hitstop(0.16); Sfx.silenceBeat(0.9);
     if (won) { Opp.alive = false; slowmo(0.2, 1.2); Render.post.impact = 1; FX.shake(0.8); Sfx.boom(1.4); }
     else { slowmo(0.3, 1); Render.post.flash = 0.3; }
     if (!forfeit && this.wins[0] < 2 && this.wins[1] < 2) {
@@ -349,7 +378,7 @@ const Duel = {
     World.resetEnv();
     this.place();
     Opp.alive = true; Opp.hp = Opp.maxHp; if (Opp.puppet) { Opp.puppet.hp = Opp.maxHp; Opp.puppet.snaps.length = 0; }
-    Cam.snapBehind && Cam.snapBehind();
+    Cam.snapBehind && Cam.snapBehind(); this.standOff();
     G.state = 'intro'; this.cdT = 3.2;
     this.renderRounds();
     HUD.banner(this.wins[0] === 1 && this.wins[1] === 1 ? 'FINAL ROUND' : 'ROUND ' + this.round, 'flow'); Sfx.P('sfx_vs', 0.6);
@@ -373,6 +402,7 @@ const Duel = {
   },
   // leave the duel and restore solo mode
   leave() {
+    Sfx.mood(1);
     if (!this.active) return;
     this.send({ t: 'bye' });
     if (this.link) this.link.close(); this.link = null;

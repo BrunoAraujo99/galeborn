@@ -564,3 +564,30 @@ Object.assign(FX, {
   },
 });
 function easeOutF(t) { return 1 - Math.pow(1 - t, 3); }
+
+// soft contact blob under each fighter: grounds them and shows jump height at a glance
+const ContactShadow = {
+  list: [],
+  make() {
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { a: { value: 0.5 } }, transparent: true, depthWrite: false,
+      vertexShader: 'varying vec2 vU; void main(){ vU = uv * 2.0 - 1.0; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform float a; varying vec2 vU; void main(){ float r = length(vU); float k = smoothstep(1.0, 0.25, r); gl_FragColor = vec4(0.04, 0.02, 0.08, k * a); }',
+    });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+    m.rotation.x = -Math.PI / 2; m.renderOrder = 1; m.frustumCulled = false;
+    Render.scene.add(m); return m;
+  },
+  update() {
+    const fs = [G.player, G.boss];
+    for (let i = 0; i < 2; i++) {
+      const f = fs[i], m = this.list[i] || (this.list[i] = this.make());
+      const p = f && f.pos, root = f && f.rig && f.rig.root;
+      const on = !!p && (!root || root.visible) && G.state !== 'title' && G.state !== 'select' && p.y > -0.5 && Math.hypot(p.x, p.z) < ARENA_R + 1;
+      m.visible = on; if (!on) continue;
+      const h = Math.max(0, p.y), k = 1 / (1 + h * 0.45), big = f === G.realBoss && !Duel.active ? 2.2 : 1;
+      m.position.set(p.x, 0.035, p.z); m.scale.setScalar(1.5 * big * (0.7 + 0.3 * k));
+      m.material.uniforms.a.value = 0.55 * k;
+    }
+  },
+};

@@ -148,7 +148,7 @@ const Blitz = {
 /* ---------------- duel clash: both strikes land in the same instant ---------------- */
 function duelClash(at, f) {
   const p = G.player;
-  Sfx.clash(); hitstop(0.1); FX.shake(0.7);
+  Sfx.clash(); hitstop(0.18); FX.shake(0.7); Cam.beat(true, true);
   Render.post.flash = 0.35; Render.post.aberr = 1.5;
   FX.star(at, 5, 0xfff0c0, 0.25); FX.impactLines(at, 22, 0xfff0d0, 5, 0.3); FX.shockwave(at, 0.6, 1.5);
   FX.burst(at, 36, { speed: 18, life: 0.5, s0: 0.35, c0: C.white, c1: C.wind });

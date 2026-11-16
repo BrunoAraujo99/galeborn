@@ -1,4 +1,5 @@
 'use strict';
+const _e1 = new THREE.Euler();
 /* ============================================================
    Hero 3D model (Meshy / Mixamo skeleton) driven by the procedural rig.
    The primitive rig keeps running invisibly and supplies the pose for
@@ -273,6 +274,11 @@ void main(){
       const w = this.actW;
       for (const b of this.order) b.quaternion.slerp(this.actQ[b.name], w);
       B.Hips.position.y = lerp(B.Hips.position.y, this.actHipY, w);
+      // hit whips also show on top of the model's own clips (hit reaction, knockdown)
+      if (rig.ad) for (const n in rig.ad) {
+        const bn = { torso: 'Spine2', head: 'Head', shL: 'LeftArm', shR: 'RightArm', hips: 'Hips' }[n], b = bn && B[bn]; if (!b) continue;
+        const o = rig.ad[n].p; _e1.set(o[0] * w, o[1] * w, o[2] * w); b.quaternion.multiply(_q1.setFromEuler(_e1));
+      }
     }
     // smear stretch on the striking limb
     const sm = rig.smear || 0; rig.smear = 0;

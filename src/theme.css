@@ -255,3 +255,15 @@ body.cine #nbot { opacity: 0; } #nbot { transition: opacity .25s; }
 #combo { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; width: 340px; }
 #comboN { flex-basis: 100%; order: 0; } #combo .hits { order: 1; } #comboD { order: 2; margin: 0; }
 #comboR { order: 3; flex-basis: 100%; } #combo .cj { order: 4; }
+
+/* ink-wipe into fights: dark panel with a magenta brush edge sweeps off screen */
+#inkwipe { position: fixed; inset: 0; z-index: 60; pointer-events: none; overflow: hidden; display: none; }
+#inkwipe.go { display: block; }
+#inkwipe i { position: absolute; top: -20%; bottom: -20%; left: -30%; width: 160%; transform: skewX(-16deg) translateX(0); background: #0b0614; }
+#inkwipe i::after { content: ''; position: absolute; top: 0; bottom: 0; right: -38px; width: 46px;
+  background: repeating-linear-gradient(180deg, #ff2fa8 0 22px, #ff5fc0 22px 31px, transparent 31px 37px, #ff2fa8 37px 70px);
+  box-shadow: 0 0 24px #ff2fa8, 18px 0 0 -8px #29e6ff; }
+#inkwipe.go i { animation: inkwipe 0.62s cubic-bezier(.7, 0, .3, 1) 0.06s forwards; }
+#inkwipe i:nth-child(2) { background: #ff2fa8; opacity: 0.85; width: 6%; left: auto; right: 72%; }
+#inkwipe.go i:nth-child(2) { animation-delay: 0.02s; }
+@keyframes inkwipe { to { transform: skewX(-16deg) translateX(110%); } }

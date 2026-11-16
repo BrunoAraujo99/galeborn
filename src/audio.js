@@ -15,7 +15,11 @@ const Sfx = {
     comp.connect(ctx.destination); this.comp = comp;
     this.master = ctx.createGain(); this.master.gain.value = this.masterVol ?? 0.7; this.master.connect(comp);
     this.sfxBus = ctx.createGain(); this.sfxBus.gain.value = 1; this.sfxBus.connect(this.master);
-    this.music = ctx.createGain(); this.music.gain.value = this.musicVol ?? 0.55; this.music.connect(this.master);
+    this.music = ctx.createGain(); this.music.gain.value = this.musicVol ?? 0.55;
+    // mood stage after the music bus: muffled and low in neutral, open in an exchange, a beat of silence at a K.O.
+    this.moodLp = ctx.createBiquadFilter(); this.moodLp.type = 'lowpass'; this.moodLp.frequency.value = 20000; this.moodLp.Q.value = 0.5;
+    this.moodGain = ctx.createGain(); this.moodGain.gain.value = 1;
+    this.music.connect(this.moodLp); this.moodLp.connect(this.moodGain); this.moodGain.connect(this.master);
     const len = ctx.sampleRate;
     this.noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
     const d = this.noiseBuf.getChannelData(0);
@@ -219,6 +223,17 @@ const Sfx = {
   clash() { if (this.P('sfx_clash', 1)) { this.hit(1.3); return; } this.ting(1500); this.ting(2300); this.noise(0.3, 7000, 1500, 0.8, 'highpass', 0.6); this.tone('square', 800, 300, 0.15, 0.12); this.hit(1.3); },
   ui() { if (this.P('sfx_ui_move', 0.6, { jitter: false })) return; this.tone('triangle', 880, 880, 0.08, 0.12); },
   // ---------- score moments ----------
+  mood(level) {
+    if (!this.ctx || !this.moodLp || this._mood === level || this._silenceT > this.ctx.currentTime) return;
+    this._mood = level; const t = this.ctx.currentTime;
+    this.moodLp.frequency.setTargetAtTime(level === 0 ? 1100 : 20000, t, level === 0 ? 0.9 : 0.12);
+    this.moodGain.gain.setTargetAtTime(level === 0 ? 0.72 : level === 2 ? 1.12 : 1, t, level === 0 ? 0.9 : 0.12);
+  },
+  silenceBeat(dur = 0.7) {
+    if (!this.ctx || !this.moodGain) return; const g = this.moodGain.gain, t = this.ctx.currentTime;
+    g.cancelScheduledValues(t); g.setTargetAtTime(0, t, 0.03); g.setTargetAtTime(1, t + dur, 0.25);
+    this._silenceT = t + dur + 0.2; this._mood = -1;
+  },
   musicCut() { if (!this.ctx) return; const g = this.music.gain; g.cancelScheduledValues(this.ctx.currentTime); g.setTargetAtTime(0, this.ctx.currentTime, 0.02); },
   musicRestore() { if (!this.ctx) return; const g = this.music.gain; g.cancelScheduledValues(this.ctx.currentTime); g.setTargetAtTime(this.musicVol ?? 0.55, this.ctx.currentTime, 0.3); },
   riser(dur = 1.4) {

@@ -199,3 +199,13 @@ const CutIn = {
     if (k > 0.88) this.el.className = 'hide ' + this.who;
   },
 };
+
+// sweeps a brush-edged panel off the screen as a fight opens (covers the menu-to-arena cut)
+const InkWipe = {
+  play() {
+    let el = document.getElementById('inkwipe');
+    if (!el) { el = document.createElement('div'); el.id = 'inkwipe'; el.innerHTML = '<i></i><i></i>'; document.body.appendChild(el); }
+    el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+    clearTimeout(this.t); this.t = setTimeout(() => el.classList.remove('go'), 900);
+  },
+};

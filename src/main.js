@@ -246,7 +246,7 @@ G.startIntro = function () {
   G.reset();
   G.state = 'intro'; G.introT = 0;
   Sfx.init(); Sfx.intensity = 0; Sfx.loopOn('sfx_ambient_loop', 0.3);
-  $('title').classList.add('hide');
+  InkWipe.play(); $('title').classList.add('hide');
   $('hud').classList.add('show');
   const b = G.boss;
   b.state = 'intro';
@@ -413,7 +413,7 @@ function main() {
       G.boss.lateUpdate(raw, Render.camera);
       G.player.lateUpdate(raw, Render.camera);
     }
-    World.update(raw, G.time, simActive ? sim : raw); Stage.update(raw);
+    World.update(raw, G.time, simActive ? sim : raw); Stage.update(raw); ContactShadow.update();
     CutIn.update(raw);
     if (G.state !== 'title' && G.state !== 'select') Cam.update(raw, G.paused ? { cx: 0, cy: 0 } : a);
     FX.updateSpeedBg(raw, Render.camera); SpeedLines.update(raw);

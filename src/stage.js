@@ -316,6 +316,11 @@ const Stage = {
     for (const P of World.dpillars) { const ms = P.proc ? P.proc.mats : P.mats; ms[0].color.set(cfg.pillar[0]); ms[1].color.set(cfg.pillar[1]); }
     for (const P of World.dpillars) if (P.rune) P.rune.material.color.set(cfg.pillar[2]);
     if (cfg.debris && World.stoneMat) World.stoneMat.color.set(cfg.debris);
+    // per-arena colour grade + rim light that matches the sky
+    const GR = { sunset: { lift: [0.035, 0.012, 0.03], gain: [1.06, 0.99, 0.93], vig: [0.35, 0.08, 0.22], rim: 0xffb070 },
+                 storm:  { lift: [0.01, 0.02, 0.05], gain: [0.95, 1.0, 1.08], vig: [0.08, 0.1, 0.3], rim: 0x8ab8ff },
+                 snow:   { lift: [0.02, 0.03, 0.05], gain: [1.0, 1.02, 1.06], vig: [0.25, 0.3, 0.55], rim: 0xd0ecff } }[id];
+    if (GR) { Render.grade = { lift: new THREE.Color(...GR.lift), gain: new THREE.Color(...GR.gain), vig: new THREE.Color(...GR.vig) }; RIM_ARENA.value.set(GR.rim); }
     return cfg;
   },
   update(dt) {

@@ -7,6 +7,11 @@ const COUNTER_MOVE = { w: 'counter', s: 'counter', dur: 0.5, a0: 0.05, a1: 0.14,
 
 const GRAV = 34, RUN_SPEED = 9.5, JUMP_V = 12.2, JUMP2_V = 11.2;
 
+// hit whip on any fighter rig: light hits snap the head and spine, heavy ones fold the whole upper body
+function kickReact(r, kind, side) {
+  if (kind === 'light' || kind === 'chip') { r.kick('torso', -7, 5 * side, 3 * side); r.kick('head', -11, 9 * side, 0); r.kick('shL', 4, 0, 6); r.kick('shR', 4, 0, -6); }
+  else { r.kick('torso', -16, 4 * side, 0); r.kick('head', -18, 0, 0); r.kick('shL', -6, 0, 12); r.kick('shR', -6, 0, -12); }
+}
 class Player {
   constructor() {
     this.rig = makeHeroRig();
@@ -350,9 +355,9 @@ class Player {
     const m = this.move, t = this.st;
     const fwd = this.fwd();
     // pose
-    if (t < m.a0) this.rig.setPose(HERO_POSES[m.w], 26);
+    if (t < m.a0) this.rig.setPose(HERO_POSES[m.w], 26, 1, true);
     // strike: snap in fast and overshoot a little, then settle (follow-through)
-    else if (t < m.cancel + 0.05) this.rig.setPose(HERO_POSES[m.s], m.big ? 46 : 52, m.big ? 0.42 : 0.5);
+    else if (t < m.cancel + 0.05) this.rig.setPose(HERO_POSES[m.s], m.big ? 46 : 52, m.big ? 0.42 : 0.5, true);
     // soft tracking: strikes curve toward a nearby boss until they land
     if (t < m.a1 && G.boss.alive) { const d = this.bossDir(); if (d.length() < m.reach + G.boss.radius + 3) this.yaw = dampAngle(this.yaw, yawOf(d.x, d.z), 14, dt); }
     // anime smear: stretch the striking limb and leave an afterimage as the blow lands
@@ -742,11 +747,7 @@ class Player {
     return 'hit';
   }
   // hit reactions: whip the spine and head along the blow, then let the spring settle them
-  reactKick(kind) {
-    const r = this.rig; this.reactSide = -(this.reactSide || 1);
-    if (kind === 'light' || kind === 'chip') { r.kick('torso', -7, 5 * this.reactSide, 3 * this.reactSide); r.kick('head', -11, 9 * this.reactSide, 0); r.kick('shL', 4, 0, 6); r.kick('shR', 4, 0, -6); }
-    else { r.kick('torso', -16, 4 * this.reactSide, 0); r.kick('head', -18, 0, 0); r.kick('shL', -6, 0, 12); r.kick('shR', -6, 0, -12); }
-  }
+  reactKick(kind) { this.reactSide = -(this.reactSide || 1); kickReact(this.rig, kind, this.reactSide); }
   // reset beat after a knockdown in a duel: the fighter springs back to mid range, which gives the fight a breath
   resetBeat() {
     if (!G.boss.alive) return;

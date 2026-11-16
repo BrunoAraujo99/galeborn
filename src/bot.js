@@ -143,11 +143,15 @@ const BotAI = {
     // knocked into the air: air recovery
     if (Burst.can(p) && Math.random() < D.recover * raw * 4) { a.block = true; return a; }
     if (p.state === 'launched') { if (p.st > 0.2 && Math.random() < D.recover * raw * 5) a.dash = true; return a; }
+    if (p.state === 'down' || p.state === 'launched') { this.nextAtk = Math.max(this.nextAtk || 0, t + rand(D.pause[0], D.pause[1]) + 0.4); this.comboLeft = 0; }
     if (p.state === 'down') { if (Math.random() < D.recover * raw * 6) a.jump = true; return a; }
     // stay away from the edge and from vents about to erupt
     const rC = Math.hypot(p.pos.x, p.pos.z), vd = Arena.danger(p.pos);
     if (vd && p.state === 'move') { this.steer(a, p.pos.x - vd.x, p.pos.z - vd.z); if (Math.random() < raw * 3) a.dash = true; return a; }
     if (rC > ARENA_R - 4 && p.state === 'move' && Math.random() < 0.6) { this.steer(a, -p.pos.x + ux * 2, -p.pos.z + uz * 2); if (rC > ARENA_R - 2 && Math.random() < raw * 2) a.dash = true; return a; }
+    // ---- reading the human: a whiff in range is an opening, take it
+    if (os === 'attack' && dist > 3.2 && dist < 6 && !this.whiffSeen && Math.random() < D.chase) { this.whiffSeen = true; this.nextAtk = t + D.react * 0.6; }
+    if (os !== 'attack') this.whiffSeen = false;
     // ---- offence
     if (p.flow >= 100 && dist < 9 && Math.random() < D.ult * raw * 2) { a.special = true; return a; }
     this.strafeT -= raw; if (this.strafeT <= 0) { this.strafeT = rand(1.2, 2.6); this.strafe = Math.random() < 0.5 ? 1 : -1; }
@@ -165,8 +169,12 @@ const BotAI = {
     }
     if (t < this.nextAtk) {
       // spacing: circle the opponent at mid range between strings
-      const want = dist < 3.2 ? -0.7 : dist > 5 ? 0.6 : 0;
+      const want = dist < 4.2 ? -0.75 : dist > 6.5 ? 0.6 : 0;
       this.steer(a, ux * want - uz * this.strafe, uz * want + ux * this.strafe);
+      // feint: step in to bait a swing, then back out
+      this.feintT = (this.feintT || 0) - raw;
+      if (this.feintT <= 0 && dist < 7 && dist > 4 && p.state === 'move' && Math.random() < raw * 0.35 * (D.chase + 0.3)) { this.feintT = 1.6; this.feintOut = t + 0.32; this.steer(a, ux, uz); a.dash = true; return a; }
+      if (this.feintOut && t > this.feintOut && p.state === 'move') { this.feintOut = 0; a.dash = true; this.steer(a, -ux, -uz); return a; }
       return a;
     }
     if (dist > 2.9) { this.steer(a, ux, uz); if (dist > 4.5 && Math.random() < raw * 1.2) a.dash = true; return a; }

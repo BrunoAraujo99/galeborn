@@ -74,24 +74,38 @@ class Rig {
   }
   // poses are reached through a damped spring: zeta 1 eases in and settles (weight),
   // zeta < 1 overshoots and settles back (snap + follow-through on strikes)
-  setPose(p, rate, zeta) {
+  setPose(p, rate, zeta, lead) {
     for (const n of JOINTS) { const v = p[n] || ZERO3; const t = this.target[n]; t[0] = v[0]; t[1] = v[1]; t[2] = v[2]; }
     this.target.hipsY = p.hipsY || 0;
     if (rate) this.rate = rate;
-    this.zeta = zeta || 1;
+    this.zeta = zeta || 1; this.lead = !!lead;
   }
-  // push a joint's spring (radians per second): whips the pose, then it settles back
-  kick(n, x, y, z) { const v = this.pv[n]; if (v) { v[0] += x; v[1] += y; v[2] += z; } }
+  // hit whip: an additive, underdamped offset on a few joints that rides on top of any pose or clip
+  kick(n, x, y, z) {
+    const A = this.ad || (this.ad = {});
+    const o = A[n] || (A[n] = { p: [0, 0, 0], v: [0, 0, 0] });
+    o.v[0] += x; o.v[1] += y; o.v[2] += z;
+  }
+  updKick(dt) {
+    const A = this.ad; if (!A || dt <= 0) return;
+    const w = 24, z = 0.32, ns = Math.ceil(dt * w / 0.3), h = dt / ns;
+    for (const n in A) { const o = A[n]; for (let s = 0; s < ns; s++) for (let i = 0; i < 3; i++) { o.v[i] += (-w * w * o.p[i] - 2 * z * w * o.v[i]) * h; o.p[i] += o.v[i] * h; } }
+  }
   snap() { for (const n of JOINTS) { const c = this.cur[n], t = this.target[n], v = this.pv[n]; c[0] = t[0]; c[1] = t[1]; c[2] = t[2]; v[0] = v[1] = v[2] = 0; } this.cur.hipsY = this.target.hipsY; this.pvY = 0; }
   update(dt) {
     const w = this.rate * 1.5, z = this.zeta, w2 = w * w, d2 = 2 * z * w;
     const ns = dt > 0 ? Math.min(24, Math.ceil(dt * w / 0.3)) : 0, h = ns ? dt / ns : 0;
     for (const n of JOINTS) {
       const c = this.cur[n], t = this.target[n], v = this.pv[n];
-      for (let s = 0; s < ns; s++) for (let i = 0; i < 3; i++) { v[i] += (w2 * (t[i] - c[i]) - d2 * v[i]) * h; c[i] += v[i] * h; }
+      // overlapping action on strikes: hips and legs drive first, the arms and head trail a beat behind
+      const m = this.lead ? (JOINT_LEAD[n] || 1) : 1, wm2 = w2 * m * m, dm2 = d2 * m;
+      const nsj = Math.max(ns, dt > 0 ? Math.ceil(dt * w * m / 0.3) : 0), hj = nsj ? dt / nsj : 0;
+      for (let s = 0; s < nsj; s++) for (let i = 0; i < 3; i++) { v[i] += (wm2 * (t[i] - c[i]) - dm2 * v[i]) * hj; c[i] += v[i] * hj; }
       this.j[n].rotation.set(c[0], c[1], c[2]);
     }
     for (let s = 0; s < ns; s++) { this.pvY += (w2 * (this.target.hipsY - this.cur.hipsY) - d2 * this.pvY) * h; this.cur.hipsY += this.pvY * h; }
+    this.updKick(dt);
+    if (this.ad) for (const n in this.ad) { const o = this.ad[n].p, r = this.j[n] && this.j[n].rotation; if (r) { r.x += o[0]; r.y += o[1]; r.z += o[2]; } }
     const ad = this.addHips;
     if (ad) { this.j.hips.rotation.x += ad[0]; this.j.hips.rotation.y += ad[1]; ad[0] = 0; ad[1] = 0; }
     this.j.hips.position.y = this.hipBase + this.cur.hipsY;
@@ -264,6 +278,7 @@ function updateRigChains(rig, dt, cam) {
 }
 
 /* ---------------- Pose libraries ---------------- */
+const JOINT_LEAD = { hips: 1.3, hipL: 1.25, hipR: 1.25, knL: 1.2, knR: 1.2, torso: 1.12, head: 0.72, shL: 0.95, shR: 0.95, elL: 0.82, elR: 0.82 };
 const HERO_POSES = {
   idle: { hipsY: -0.07, hips: [0, 0.35, 0], torso: [0.08, -0.15, 0], head: [0, -0.2, 0], shL: [-0.7, 0, 0.25], elL: [-1.3, 0, 0], shR: [-0.25, 0, -0.35], elR: [-1.6, 0, 0], hipL: [-0.35, 0, 0.12], knL: [0.45, 0, 0], hipR: [0.3, 0, -0.12], knR: [0.35, 0, 0] },
   jump: { hipsY: 0.05, torso: [0.15, 0, 0], shL: [-0.4, 0, 1.1], elL: [-0.4, 0, 0], shR: [-0.4, 0, -1.1], elR: [-0.4, 0, 0], hipL: [-1.3, 0, 0], knL: [1.8, 0, 0], hipR: [-0.5, 0, 0], knR: [1.2, 0, 0] },
