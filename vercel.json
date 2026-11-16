@@ -1,7 +1,7 @@
 {
   "trailingSlash": true,
   "redirects": [
-    { "source": "/:path*", "has": [{ "type": "host", "value": "galeborn-rho.vercel.app" }], "destination": "https://playgaleborn.fun/:path*", "permanent": true }
+    { "source": "/(.*)", "has": [{ "type": "host", "value": "galeborn-rho.vercel.app" }], "destination": "https://playgaleborn.fun/$1", "permanent": true }
   ],
   "headers": [
     { "source": "/(heroes|audio)/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }] },
