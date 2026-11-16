@@ -292,7 +292,9 @@ function setHelp(show) {
 function main() {
   Render.init();
   FX.init(Render.scene);
+  const preWorld = new Set(Render.scene.children);
   World.build(Render.scene);
+  Stage.init(preWorld);
   Settings.load();
   Input.init(Render.r.domElement);
   HUD.init(); NEON.init();
@@ -303,6 +305,7 @@ function main() {
   G.boss = new Boss();
   { const seen = new Set(); G.boss.rig.root.traverse(o => { if (o.isMesh && o.material && o.material.isMeshToonMaterial && !seen.has(o.material)) { seen.add(o.material); addRim(o.material, 0xff8a40, 0.4, 0.6); } }); }
   G.reset();
+  Arena.set('ruins');
   Perf.init();
   Cam.yaw = 0.6; Cam.pos.set(10, 6, 14);
   const canvas = Render.r.domElement;
@@ -355,7 +358,7 @@ function main() {
       if (a.confirm && !a.lock && !G.menuOpen && !$('lobby').classList.contains('show') && !$('board').classList.contains('show')) { Sfx.init(); Select.open(Lobby.pendingRoom ? 'friend' : 'ranked'); }
       Cam.yaw += raw * 0.08;
       const cam = Render.camera;
-      cam.position.set(Math.sin(Cam.yaw) * 17, 4.5, Math.cos(Cam.yaw) * 17);
+      cam.position.set(Math.sin(Cam.yaw) * 12, 3.6, Math.cos(Cam.yaw) * 12);
       cam.lookAt(0, 2.2, 0);
       G.boss.rig.setPose(BOSS_POSES.idle, 4); G.boss.update(raw * 0.0001 + 1e-6);
     } else if (G.state === 'victory' || G.state === 'defeat') {
@@ -403,7 +406,7 @@ function main() {
       G.boss.lateUpdate(raw, Render.camera);
       G.player.lateUpdate(raw, Render.camera);
     }
-    World.update(raw, G.time, simActive ? sim : raw);
+    World.update(raw, G.time, simActive ? sim : raw); Stage.update(raw);
     CutIn.update(raw);
     if (G.state !== 'title' && G.state !== 'select') Cam.update(raw, G.paused ? { cx: 0, cy: 0 } : a);
     FX.updateSpeedBg(raw, Render.camera); SpeedLines.update(raw);

@@ -1,5 +1,5 @@
 import sys, base64, os, glob, json, shutil, datetime
-order=['core','audio','fx','heroes','rig','heromodel','world','combat','player','boss','ui','anime','moments','clips','spectacle','kits','movesets','depth','arena','tempo','clarity','training','progress','profile','select','net','duel','bot','lobby','settings','perf','neon','main']
+order=['core','audio','fx','heroes','rig','heromodel','world','combat','player','boss','ui','anime','moments','clips','spectacle','kits','movesets','depth','arena','stage','tempo','clarity','training','progress','profile','select','net','duel','bot','lobby','settings','perf','neon','main']
 game='\n'.join(open(f'src/{n}.js').read() for n in order)
 libs=open('src/three.min.js').read()+'\n'+open('src/gltfloader.js').read()+'\n'+open('src/vendor/supabase.js').read()
 HEROES=['wind','fire','earth','water']
@@ -24,6 +24,9 @@ emb=''
 for h in HEROES:
     glb=f'assets/heroes/{h}.glb'
     emb+=f'\nconst HERO_{h.upper()}_B64="'+(base64.b64encode(open(glb,'rb').read()).decode() if os.path.exists(glb) else '')+'";\n'
+ARENA_GLB=sorted(glob.glob('assets/arenas/*/*.glb'))
+akey=lambda f: f.split('assets/arenas/')[1][:-4]
+emb+='const ARENA_B64='+json.dumps({akey(f):base64.b64encode(open(f,'rb').read()).decode() for f in ARENA_GLB})+';\n'
 emb+='const AUDIO_B64='+json.dumps({os.path.splitext(os.path.basename(f))[0]:base64.b64encode(open(f,'rb').read()).decode() for f in audio})+';\n'
 html=page(emb)
 os.makedirs('dist',exist_ok=True)
@@ -33,6 +36,7 @@ print('single file',len(html))
 web='dist/web'
 shutil.rmtree(web,ignore_errors=True); os.makedirs(web+'/heroes'); os.makedirs(web+'/audio')
 for h in HEROES: shutil.copy(f'assets/heroes/{h}.glb',f'{web}/heroes/{h}.glb')
+for f in ARENA_GLB: os.makedirs(os.path.dirname(f'{web}/arenas/'+akey(f)),exist_ok=True); shutil.copy(f,f'{web}/arenas/'+akey(f)+'.glb')
 for f in audio: shutil.copy(f,f'{web}/audio/')
 w=page('\nconst ASSET_WEB=true;\nconst AUDIO_LIST='+json.dumps([os.path.splitext(os.path.basename(f))[0] for f in audio])+';\n')
 open(web+'/index.html','w').write(w)

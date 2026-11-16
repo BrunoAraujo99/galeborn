@@ -13,6 +13,7 @@ const Perf = {
     for (const d of World.dpillars) this.unmergePillar(d);
     for (const f of World.floaters || []) addTree(f);
     if (World.temple) addTree(World.temple);
+    if (typeof Stage !== 'undefined') { for (const k in Stage.groups) addTree(Stage.groups[k]); addTree(Stage.sky); }
     if (G.boss) addTree(G.boss.rig.root);
     if (G.player) addTree(G.player.rig.root);
     this.snap = [];
