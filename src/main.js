@@ -22,9 +22,9 @@ const Cam = {
     this.side = damp(this.side, this.sideT ?? 1, 1.5, dt);
     this.pitch = clamp(this.pitch + a.cy, -0.12, 1.05);
     const sep = lockOK ? dPB : 0;
-    const dist = clamp(5.4 + sep * 0.32, 5.4, 14) + Clarity.zoom * 2.6;
+    const dist = clamp(4.9 + sep * 0.42, 4.9, 12) + Clarity.zoom * 2.6;
     const right = new V3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
-    const lat = (lockOK ? 1.25 : 0.6) * this.side;
+    const lat = (lockOK ? 1.55 : 0.7) * this.side;
     const focus = new V3(p.pos.x, p.pos.y * 0.75 + 1.45, p.pos.z).addScaledVector(right, lat);
     outLook.copy(focus);
     if (lockOK) {

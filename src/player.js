@@ -17,7 +17,7 @@ class Player {
     this.reset();
   }
   reset() {
-    this.pos = new V3(0, 0, 9); this.vel = new V3(); this.yaw = Math.PI;
+    this.pos = new V3(0, 0, 5.5); this.vel = new V3(); this.yaw = Math.PI;
     this.maxHp = Hero.def.stats.hp; this.hp = this.maxHp; this.flow = 0;
     this.state = 'move'; this.st = 0; this.grounded = true; this.jumps = 0; this.airDashes = 0; this.airHits = 0;
     this.comboIdx = 0; this.comboT = 0; this.buf = null; this.bufT = 0;
@@ -460,7 +460,7 @@ class Player {
     hitstop(stop);
     FX.shake(big ? 0.55 : Clarity.fx(0.24));
     Sfx.hit(big ? 1.5 : 1);
-    FX.hitSpark(point, dir, big, false);
+    FX.hitSpark(point, dir, big, false, Hero.id);
     if (big || !Clarity.busy()) FX.impactLines(point, big ? 18 : 9, HC.glow, big ? 4.5 : 2.4, big ? 0.24 : 0.16);
     if (big) {
       Render.post.impact = Math.max(Render.post.impact, 1); Render.post.aberr = 1.2; Render.post.speed = Math.max(Render.post.speed, 1);
@@ -634,7 +634,7 @@ class Player {
         this.tickT = 0.1; this.ticks++;
         const hp = b.chest(new V3()).add(new V3(rand(-0.6, 0.6), rand(-0.6, 0.6), rand(-0.6, 0.6)));
         const res = b.takeDamage(7, 2, hp, this.bossDir().normalize(), { src: 'special', noFlinch: true });
-        if (res) { FX.hitSpark(hp, new V3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize(), false, false); Sfx.hit(0.6); FX.shake(0.2); FX.dmgNumber(hp, res.dmg, ''); FX.impactLines(hp, 6, HC.glow, 2, 0.12); this.combo++; this.comboTimer = 2.2; this.comboDmg = (this.comboDmg || 0) + res.dmg; }
+        if (res) { FX.hitSpark(hp, new V3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize(), false, false, Hero.id); Sfx.hit(0.6); FX.shake(0.2); FX.dmgNumber(hp, res.dmg, ''); FX.impactLines(hp, 6, HC.glow, 2, 0.12); this.combo++; this.comboTimer = 2.2; this.comboDmg = (this.comboDmg || 0) + res.dmg; }
       }
       for (let i = 0; i < 8; i++) { const ang = rand(0, TAU), rr = rand(1.5, 4.5), y = rand(0, 14); FX.add_.spawn(b.pos.x + Math.cos(ang) * rr, y, b.pos.z + Math.sin(ang) * rr, -Math.sin(ang) * 14, rand(2, 6), Math.cos(ang) * 14, 0.35, 0.3, 0.05, C.white, C.wind, 1, 0, 0.9); }
       if (t >= 2.25) {
@@ -657,7 +657,7 @@ class Player {
         const res = b.takeDamage(55, 60, hp, new V3(0, -1, 0), { big: true, src: 'special' });
         hitstop(0.22); Render.post.impact = 1; Render.post.flash = 0.5; Render.post.aberr = 1.5;
         FX.shake(1); Sfx.boom(1.2); Sfx.hit(1.8);
-        FX.hitSpark(hp, new V3(0, -1, 0), true, false);
+        FX.hitSpark(hp, new V3(0, -1, 0), true, false, Hero.id);
         FX.star(hp, 7, 0xffffff, 0.25);
         FX.groundRing(b.pos, 12, HC.pale, 0.6); FX.groundRing(b.pos, 8, 0xffffff, 0.4, 0.6);
         FX.burst(hp, 60, { speed: 24, life: 0.6, s0: 0.5, c0: C.white, c1: C.wind });

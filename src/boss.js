@@ -17,7 +17,7 @@ class Boss {
     this.reset();
   }
   reset() {
-    this.pos = new V3(0, 0, -7); this.yaw = 0; this.knock = new V3();
+    this.pos = new V3(0, 0, -5); this.yaw = 0; this.knock = new V3();
     this.maxHp = 1500; this.hp = this.maxHp; this.posture = 0; this.maxPosture = 100; this.postureDelay = 0;
     this.phase = 1; this.state = 'intro'; this.st = 0; this.atk = null; this.cool = 1.4; this.last = '';
     this.alive = true; this.flash = 0; this.held = false; this.pendingPhase = false; this.strafe = 1; this.strafeT = 0;

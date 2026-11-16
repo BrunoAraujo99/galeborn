@@ -257,6 +257,9 @@ function glowMaterial(color, opacity = 1) {
   });
 }
 
+const ELEM_FX = {};
+for (const [k, core, mid, acc] of [['wind', 0xffffff, 0x3df2ff, 0x8a6aff], ['fire', 0xfff2a0, 0xff7a2a, 0xff3d6a], ['earth', 0xfff4c0, 0xa8e048, 0xffb020], ['water', 0xeaf6ff, 0x3a9aff, 0xa070ff]])
+  ELEM_FX[k] = { c0: new THREE.Color(core), c1: new THREE.Color(mid), c2: new THREE.Color(acc), mid, acc };
 const C = {
   white: new THREE.Color(1, 1, 1), wind: new THREE.Color(0.55, 1.0, 0.95), windDeep: new THREE.Color(0.2, 0.7, 1.0),
   windFade: new THREE.Color(0.05, 0.25, 0.4), fire: new THREE.Color(1.0, 0.55, 0.12), fireHot: new THREE.Color(1.0, 0.9, 0.5),
@@ -370,12 +373,22 @@ const FX = {
         o.c0 ?? C.white, o.c1 ?? C.wind, o.drag ?? 4, o.grav ?? 0, o.alpha ?? 1);
     }
   },
-  hitSpark(p, dir, big, fire) {
+  hitSpark(p, dir, big, fire, el) {
+    const E = !fire && el && ELEM_FX[el];
+    if (E) return this.elemSpark(p, dir, big, E);
     const c0 = fire ? C.fireHot : C.white, c1 = fire ? C.ember : C.wind;
     this.burst(p, big ? 46 : 22, { speed: big ? 22 : 15, dir, spread: 1.1, life: 0.35, s0: big ? 0.45 : 0.3, c0, c1, drag: 7 });
     this.burst(p, big ? 14 : 6, { speed: 4, life: 0.6, s0: 0.9, s1: 1.8, c0: fire ? C.smokeL : new THREE.Color(0.8, 0.95, 1), c1: fire ? C.smoke : new THREE.Color(0.5, 0.7, 0.8), drag: 3, add: false, alpha: 0.35 });
     this.star(p, big ? 2.8 : 1.8, fire ? 0xffaa44 : HC.pale, big ? 0.14 : 0.09);
     if (big) this.ringBill(p, 3.5, fire ? 0xff8833 : HC.pale, 0.25);
+  },
+  // element-coloured impact: white-hot core, element body, accent fleck + ground flash on big hits
+  elemSpark(p, dir, big, E) {
+    this.burst(p, big ? 40 : 20, { speed: big ? 22 : 15, dir, spread: 1.1, life: 0.35, s0: big ? 0.5 : 0.32, c0: E.c0, c1: E.c1, drag: 7 });
+    this.burst(p, big ? 16 : 7, { speed: big ? 12 : 8, dir, spread: 1.6, life: 0.45, s0: big ? 0.38 : 0.26, c0: E.c1, c1: E.c2, drag: 5 });
+    this.burst(p, big ? 10 : 4, { speed: 4, life: 0.6, s0: 0.9, s1: 1.8, c0: E.c1, c1: E.c2, drag: 3, add: false, alpha: 0.3 });
+    this.star(p, big ? 2.6 : 1.6, E.mid, big ? 0.15 : 0.09);
+    if (big) { this.ringBill(p, 3.2, E.acc, 0.25); if (p.y < 2.5) this.groundRing(new THREE.Vector3(p.x, 0.05, p.z), 2.4, E.mid, 0.35); }
   },
   star(p, size, color, dur) {
     const m = new THREE.Mesh(this.planeGeo, starMaterial(color));

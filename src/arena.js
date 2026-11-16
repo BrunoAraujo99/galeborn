@@ -15,7 +15,7 @@ const ARENAS = {
     floor: 0xf2dcc0,
   },
 };
-const GUST_EVERY = 8, GUST_WARN = 1.3, GUST_LEN = 1.4, GUST_SPEED = 5;
+const GUST_EVERY = 8, GUST_WARN = 1.3, GUST_LEN = 1.4, GUST_SPEED = 3.6;
 const ARENA_IDS = Object.keys(ARENAS);
 const VENT_C = new THREE.Color(0x3aa8ff);
 function strHash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -47,7 +47,7 @@ const Arena = {
     if (!this.ventMeshes) {
       this.ventMeshes = [];
       for (let i = 0; i < 4; i++) {
-        const a = i / 4 * TAU + Math.PI / 4, pos = new V3(Math.cos(a) * 12, 0.04, Math.sin(a) * 12);
+        const a = i / 4 * TAU + Math.PI / 4, pos = new V3(Math.cos(a) * ARENA_R * 0.5, 0.04, Math.sin(a) * ARENA_R * 0.5);
         const mat = new THREE.MeshBasicMaterial({ color: 0x4ad8ff, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
         const ring = new THREE.Mesh(new THREE.RingGeometry(1.5, 2.2, 40), mat); ring.rotation.x = -Math.PI / 2; ring.position.copy(pos);
         Render.scene.add(ring); this.ventMeshes.push({ pos, ring, mat, warn: 0, erupt: 0, hit: false });
@@ -95,7 +95,7 @@ const Arena = {
       p.pos.addScaledVector(d, sp * dt);
     }
     if (Math.random() < dt * 30) {
-      const side = new V3(-d.z, 0, d.x), o = new V3().addScaledVector(side, rand(-14, 14)).addScaledVector(d, -14);
+      const side = new V3(-d.z, 0, d.x), o = new V3().addScaledVector(side, rand(-ARENA_R * 0.6, ARENA_R * 0.6)).addScaledVector(d, -ARENA_R * 0.6);
       FX.burst(o.setY(rand(0.4, 3.2)), 1, { speed: 30, dir: d, spread: 0.04, drag: 0, life: 0.9, s0: 0.25, s1: 0.1, c0: C.white, c1: C.white, alpha: 0.7 });
     }
   },

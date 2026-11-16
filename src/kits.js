@@ -86,7 +86,7 @@ const Kit = {
     if (b.alive && horizDist(at, b.pos) < (n === 1 ? 2.5 : 4.5) + b.radius) {
       const c = b.chest(new V3());
       const res = b.takeDamage(n === 1 ? 16 : 22, 14, c, new V3(0, 1, 0), { big: true, knock: 4, src: 'spike' });
-      if (res) { FX.dmgNumber(c, res.dmg, 'big', 'STONE SPIKE'); FX.hitSpark(c, new V3(0, 1, 0), true, false); }
+      if (res) { FX.dmgNumber(c, res.dmg, 'big', 'STONE SPIKE'); FX.hitSpark(c, new V3(0, 1, 0), true, false, 'earth'); }
     }
   },
   // ---- water: perfect dodge restores health

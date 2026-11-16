@@ -5379,7 +5379,7 @@ function seg2Dist(px, pz, ax, az, bx, bz) {
 }
 const horizDist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
-const ARENA_R = 24;
+const ARENA_R = 16;
 
 /* ---------------- Renderer + post (bloom, impact frames, speed lines) ---------------- */
 const FS_VERT = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
@@ -5395,8 +5395,8 @@ const Render = {
     r.autoClear = true;
     this.r = r;
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(62, 1, 0.1, 600);
-    this.baseFov = 62;
+    this.camera = new THREE.PerspectiveCamera(40, 1, 0.1, 600);
+    this.baseFov = 40;
     this.post = {
       strength: 0.9, impact: 0, impactInv: 0, aberr: 0, speed: 0, flash: 0, sat: 1.08,
       tint: new THREE.Color(0.55, 0.85, 1.0), tintAmt: 0, lowHp: 0,
@@ -6306,6 +6306,9 @@ function glowMaterial(color, opacity = 1) {
   });
 }
 
+const ELEM_FX = {};
+for (const [k, core, mid, acc] of [['wind', 0xffffff, 0x3df2ff, 0x8a6aff], ['fire', 0xfff2a0, 0xff7a2a, 0xff3d6a], ['earth', 0xfff4c0, 0xa8e048, 0xffb020], ['water', 0xeaf6ff, 0x3a9aff, 0xa070ff]])
+  ELEM_FX[k] = { c0: new THREE.Color(core), c1: new THREE.Color(mid), c2: new THREE.Color(acc), mid, acc };
 const C = {
   white: new THREE.Color(1, 1, 1), wind: new THREE.Color(0.55, 1.0, 0.95), windDeep: new THREE.Color(0.2, 0.7, 1.0),
   windFade: new THREE.Color(0.05, 0.25, 0.4), fire: new THREE.Color(1.0, 0.55, 0.12), fireHot: new THREE.Color(1.0, 0.9, 0.5),
@@ -6419,12 +6422,22 @@ const FX = {
         o.c0 ?? C.white, o.c1 ?? C.wind, o.drag ?? 4, o.grav ?? 0, o.alpha ?? 1);
     }
   },
-  hitSpark(p, dir, big, fire) {
+  hitSpark(p, dir, big, fire, el) {
+    const E = !fire && el && ELEM_FX[el];
+    if (E) return this.elemSpark(p, dir, big, E);
     const c0 = fire ? C.fireHot : C.white, c1 = fire ? C.ember : C.wind;
     this.burst(p, big ? 46 : 22, { speed: big ? 22 : 15, dir, spread: 1.1, life: 0.35, s0: big ? 0.45 : 0.3, c0, c1, drag: 7 });
     this.burst(p, big ? 14 : 6, { speed: 4, life: 0.6, s0: 0.9, s1: 1.8, c0: fire ? C.smokeL : new THREE.Color(0.8, 0.95, 1), c1: fire ? C.smoke : new THREE.Color(0.5, 0.7, 0.8), drag: 3, add: false, alpha: 0.35 });
     this.star(p, big ? 2.8 : 1.8, fire ? 0xffaa44 : HC.pale, big ? 0.14 : 0.09);
     if (big) this.ringBill(p, 3.5, fire ? 0xff8833 : HC.pale, 0.25);
+  },
+  // element-coloured impact: white-hot core, element body, accent fleck + ground flash on big hits
+  elemSpark(p, dir, big, E) {
+    this.burst(p, big ? 40 : 20, { speed: big ? 22 : 15, dir, spread: 1.1, life: 0.35, s0: big ? 0.5 : 0.32, c0: E.c0, c1: E.c1, drag: 7 });
+    this.burst(p, big ? 16 : 7, { speed: big ? 12 : 8, dir, spread: 1.6, life: 0.45, s0: big ? 0.38 : 0.26, c0: E.c1, c1: E.c2, drag: 5 });
+    this.burst(p, big ? 10 : 4, { speed: 4, life: 0.6, s0: 0.9, s1: 1.8, c0: E.c1, c1: E.c2, drag: 3, add: false, alpha: 0.3 });
+    this.star(p, big ? 2.6 : 1.6, E.mid, big ? 0.15 : 0.09);
+    if (big) { this.ringBill(p, 3.2, E.acc, 0.25); if (p.y < 2.5) this.groundRing(new THREE.Vector3(p.x, 0.05, p.z), 2.4, E.mid, 0.35); }
   },
   star(p, size, color, dur) {
     const m = new THREE.Mesh(this.planeGeo, starMaterial(color));
@@ -7638,7 +7651,7 @@ const World = {
   buildDestructibles() {
     this.dpillars = []; this.debris = []; this.craters = [];
     this.stoneMat = toon(0xc2b29c); this.stoneMat2 = toon(0x8e7e6e); this.floorMat = toon(0xb6a48e);
-    const N = 6, R = 16.5;
+    const N = 6, R = ARENA_R * 0.66;
     const baseStone = this.stoneMat, baseStone2 = this.stoneMat2;
     for (let i = 0; i < N; i++) {
       this.stoneMat = baseStone.clone(); this.stoneMat2 = baseStone2.clone();
@@ -8189,7 +8202,7 @@ class Player {
     this.reset();
   }
   reset() {
-    this.pos = new V3(0, 0, 9); this.vel = new V3(); this.yaw = Math.PI;
+    this.pos = new V3(0, 0, 5.5); this.vel = new V3(); this.yaw = Math.PI;
     this.maxHp = Hero.def.stats.hp; this.hp = this.maxHp; this.flow = 0;
     this.state = 'move'; this.st = 0; this.grounded = true; this.jumps = 0; this.airDashes = 0; this.airHits = 0;
     this.comboIdx = 0; this.comboT = 0; this.buf = null; this.bufT = 0;
@@ -8632,7 +8645,7 @@ class Player {
     hitstop(stop);
     FX.shake(big ? 0.55 : Clarity.fx(0.24));
     Sfx.hit(big ? 1.5 : 1);
-    FX.hitSpark(point, dir, big, false);
+    FX.hitSpark(point, dir, big, false, Hero.id);
     if (big || !Clarity.busy()) FX.impactLines(point, big ? 18 : 9, HC.glow, big ? 4.5 : 2.4, big ? 0.24 : 0.16);
     if (big) {
       Render.post.impact = Math.max(Render.post.impact, 1); Render.post.aberr = 1.2; Render.post.speed = Math.max(Render.post.speed, 1);
@@ -8806,7 +8819,7 @@ class Player {
         this.tickT = 0.1; this.ticks++;
         const hp = b.chest(new V3()).add(new V3(rand(-0.6, 0.6), rand(-0.6, 0.6), rand(-0.6, 0.6)));
         const res = b.takeDamage(7, 2, hp, this.bossDir().normalize(), { src: 'special', noFlinch: true });
-        if (res) { FX.hitSpark(hp, new V3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize(), false, false); Sfx.hit(0.6); FX.shake(0.2); FX.dmgNumber(hp, res.dmg, ''); FX.impactLines(hp, 6, HC.glow, 2, 0.12); this.combo++; this.comboTimer = 2.2; this.comboDmg = (this.comboDmg || 0) + res.dmg; }
+        if (res) { FX.hitSpark(hp, new V3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize(), false, false, Hero.id); Sfx.hit(0.6); FX.shake(0.2); FX.dmgNumber(hp, res.dmg, ''); FX.impactLines(hp, 6, HC.glow, 2, 0.12); this.combo++; this.comboTimer = 2.2; this.comboDmg = (this.comboDmg || 0) + res.dmg; }
       }
       for (let i = 0; i < 8; i++) { const ang = rand(0, TAU), rr = rand(1.5, 4.5), y = rand(0, 14); FX.add_.spawn(b.pos.x + Math.cos(ang) * rr, y, b.pos.z + Math.sin(ang) * rr, -Math.sin(ang) * 14, rand(2, 6), Math.cos(ang) * 14, 0.35, 0.3, 0.05, C.white, C.wind, 1, 0, 0.9); }
       if (t >= 2.25) {
@@ -8829,7 +8842,7 @@ class Player {
         const res = b.takeDamage(55, 60, hp, new V3(0, -1, 0), { big: true, src: 'special' });
         hitstop(0.22); Render.post.impact = 1; Render.post.flash = 0.5; Render.post.aberr = 1.5;
         FX.shake(1); Sfx.boom(1.2); Sfx.hit(1.8);
-        FX.hitSpark(hp, new V3(0, -1, 0), true, false);
+        FX.hitSpark(hp, new V3(0, -1, 0), true, false, Hero.id);
         FX.star(hp, 7, 0xffffff, 0.25);
         FX.groundRing(b.pos, 12, HC.pale, 0.6); FX.groundRing(b.pos, 8, 0xffffff, 0.4, 0.6);
         FX.burst(hp, 60, { speed: 24, life: 0.6, s0: 0.5, c0: C.white, c1: C.wind });
@@ -9052,7 +9065,7 @@ class Boss {
     this.reset();
   }
   reset() {
-    this.pos = new V3(0, 0, -7); this.yaw = 0; this.knock = new V3();
+    this.pos = new V3(0, 0, -5); this.yaw = 0; this.knock = new V3();
     this.maxHp = 1500; this.hp = this.maxHp; this.posture = 0; this.maxPosture = 100; this.postureDelay = 0;
     this.phase = 1; this.state = 'intro'; this.st = 0; this.atk = null; this.cool = 1.4; this.last = '';
     this.alive = true; this.flash = 0; this.held = false; this.pendingPhase = false; this.strafe = 1; this.strafeT = 0;
@@ -10767,7 +10780,7 @@ const Kit = {
     if (b.alive && horizDist(at, b.pos) < (n === 1 ? 2.5 : 4.5) + b.radius) {
       const c = b.chest(new V3());
       const res = b.takeDamage(n === 1 ? 16 : 22, 14, c, new V3(0, 1, 0), { big: true, knock: 4, src: 'spike' });
-      if (res) { FX.dmgNumber(c, res.dmg, 'big', 'STONE SPIKE'); FX.hitSpark(c, new V3(0, 1, 0), true, false); }
+      if (res) { FX.dmgNumber(c, res.dmg, 'big', 'STONE SPIKE'); FX.hitSpark(c, new V3(0, 1, 0), true, false, 'earth'); }
     }
   },
   // ---- water: perfect dodge restores health
@@ -11143,7 +11156,7 @@ const ARENAS = {
     floor: 0xf2dcc0,
   },
 };
-const GUST_EVERY = 8, GUST_WARN = 1.3, GUST_LEN = 1.4, GUST_SPEED = 5;
+const GUST_EVERY = 8, GUST_WARN = 1.3, GUST_LEN = 1.4, GUST_SPEED = 3.6;
 const ARENA_IDS = Object.keys(ARENAS);
 const VENT_C = new THREE.Color(0x3aa8ff);
 function strHash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -11175,7 +11188,7 @@ const Arena = {
     if (!this.ventMeshes) {
       this.ventMeshes = [];
       for (let i = 0; i < 4; i++) {
-        const a = i / 4 * TAU + Math.PI / 4, pos = new V3(Math.cos(a) * 12, 0.04, Math.sin(a) * 12);
+        const a = i / 4 * TAU + Math.PI / 4, pos = new V3(Math.cos(a) * ARENA_R * 0.5, 0.04, Math.sin(a) * ARENA_R * 0.5);
         const mat = new THREE.MeshBasicMaterial({ color: 0x4ad8ff, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
         const ring = new THREE.Mesh(new THREE.RingGeometry(1.5, 2.2, 40), mat); ring.rotation.x = -Math.PI / 2; ring.position.copy(pos);
         Render.scene.add(ring); this.ventMeshes.push({ pos, ring, mat, warn: 0, erupt: 0, hit: false });
@@ -11223,7 +11236,7 @@ const Arena = {
       p.pos.addScaledVector(d, sp * dt);
     }
     if (Math.random() < dt * 30) {
-      const side = new V3(-d.z, 0, d.x), o = new V3().addScaledVector(side, rand(-14, 14)).addScaledVector(d, -14);
+      const side = new V3(-d.z, 0, d.x), o = new V3().addScaledVector(side, rand(-ARENA_R * 0.6, ARENA_R * 0.6)).addScaledVector(d, -ARENA_R * 0.6);
       FX.burst(o.setY(rand(0.4, 3.2)), 1, { speed: 30, dir: d, spread: 0.04, drag: 0, life: 0.9, s0: 0.25, s1: 0.1, c0: C.white, c1: C.white, alpha: 0.7 });
     }
   },
@@ -11778,7 +11791,7 @@ class Puppet {
     const P = def.pal;
     this.trails = { L: new Trail(14, P.main, 0.16), R: new Trail(14, P.main, 0.16), F: new Trail(14, P.pale, 0.2), B: new Trail(14, P.main, 0.16) };
     for (const k in this.trails) Render.scene.add(this.trails[k].ribbon.mesh);
-    this.snaps = []; this.pos = new V3(0, 0, -9); this.vel = new V3(); this.yaw = 0;
+    this.snaps = []; this.pos = new V3(0, 0, -5.5); this.vel = new V3(); this.yaw = 0;
     this.state = 'move'; this.hp = def.stats.hp; this.maxHp = def.stats.hp; this.flow = 0; this.ghostT = 0;
     this.rig.root.position.copy(this.pos);
     HeroModel.load(def.id, g => {
@@ -11829,7 +11842,7 @@ const Opp = {
   puppet: null, def: null, radius: 0.55, alive: true, state: 'idle', phase: 1, posture: 0, maxPosture: 100,
   hp: 100, maxHp: 100, knock: new V3(), yaw: 0, cool: 0, held: false,
   capA: new V3(), capB: new V3(),
-  get pos() { return this.puppet ? this.puppet.pos : _o3.set(0, 0, -9); },
+  get pos() { return this.puppet ? this.puppet.pos : _o3.set(0, 0, -5.5); },
   get rig() { return this.puppet.rig; },
   chest(out = new V3()) { const p = this.pos; return out.set(p.x, p.y + 1.2, p.z); },
   takeDamage(dmg, post, point, dir, o = {}) {
@@ -12081,8 +12094,8 @@ const Duel = {
   },
   place() {
     const side = this.match.side === 1 ? 1 : -1, p = G.player;
-    p.pos.set(0, 0, 9 * side); p.yaw = side > 0 ? Math.PI : 0;
-    Opp.puppet.pos.set(0, 0, -9 * side); Opp.puppet.yaw = side > 0 ? 0 : Math.PI;
+    p.pos.set(0, 0, 5.5 * side); p.yaw = side > 0 ? Math.PI : 0;
+    Opp.puppet.pos.set(0, 0, -5.5 * side); Opp.puppet.yaw = side > 0 ? 0 : Math.PI;
     Opp.puppet.rig.root.position.copy(Opp.puppet.pos); Opp.puppet.rig.root.rotation.y = Opp.puppet.yaw;
   },
   renderRounds() {
@@ -12858,9 +12871,9 @@ const Cam = {
     this.side = damp(this.side, this.sideT ?? 1, 1.5, dt);
     this.pitch = clamp(this.pitch + a.cy, -0.12, 1.05);
     const sep = lockOK ? dPB : 0;
-    const dist = clamp(5.4 + sep * 0.32, 5.4, 14) + Clarity.zoom * 2.6;
+    const dist = clamp(4.9 + sep * 0.42, 4.9, 12) + Clarity.zoom * 2.6;
     const right = new V3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
-    const lat = (lockOK ? 1.25 : 0.6) * this.side;
+    const lat = (lockOK ? 1.55 : 0.7) * this.side;
     const focus = new V3(p.pos.x, p.pos.y * 0.75 + 1.45, p.pos.z).addScaledVector(right, lat);
     outLook.copy(focus);
     if (lockOK) {
@@ -13268,5 +13281,5 @@ window.addEventListener('load', () => {
 });
 
 </script>
-<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1116-0039</div></body>
+<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1116-0143</div></body>
 </html>

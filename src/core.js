@@ -36,7 +36,7 @@ function seg2Dist(px, pz, ax, az, bx, bz) {
 }
 const horizDist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
-const ARENA_R = 24;
+const ARENA_R = 16;
 
 /* ---------------- Renderer + post (bloom, impact frames, speed lines) ---------------- */
 const FS_VERT = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
@@ -52,8 +52,8 @@ const Render = {
     r.autoClear = true;
     this.r = r;
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(62, 1, 0.1, 600);
-    this.baseFov = 62;
+    this.camera = new THREE.PerspectiveCamera(40, 1, 0.1, 600);
+    this.baseFov = 40;
     this.post = {
       strength: 0.9, impact: 0, impactInv: 0, aberr: 0, speed: 0, flash: 0, sat: 1.08,
       tint: new THREE.Color(0.55, 0.85, 1.0), tintAmt: 0, lowHp: 0,

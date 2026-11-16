@@ -22,7 +22,7 @@ class Puppet {
     const P = def.pal;
     this.trails = { L: new Trail(14, P.main, 0.16), R: new Trail(14, P.main, 0.16), F: new Trail(14, P.pale, 0.2), B: new Trail(14, P.main, 0.16) };
     for (const k in this.trails) Render.scene.add(this.trails[k].ribbon.mesh);
-    this.snaps = []; this.pos = new V3(0, 0, -9); this.vel = new V3(); this.yaw = 0;
+    this.snaps = []; this.pos = new V3(0, 0, -5.5); this.vel = new V3(); this.yaw = 0;
     this.state = 'move'; this.hp = def.stats.hp; this.maxHp = def.stats.hp; this.flow = 0; this.ghostT = 0;
     this.rig.root.position.copy(this.pos);
     HeroModel.load(def.id, g => {
@@ -73,7 +73,7 @@ const Opp = {
   puppet: null, def: null, radius: 0.55, alive: true, state: 'idle', phase: 1, posture: 0, maxPosture: 100,
   hp: 100, maxHp: 100, knock: new V3(), yaw: 0, cool: 0, held: false,
   capA: new V3(), capB: new V3(),
-  get pos() { return this.puppet ? this.puppet.pos : _o3.set(0, 0, -9); },
+  get pos() { return this.puppet ? this.puppet.pos : _o3.set(0, 0, -5.5); },
   get rig() { return this.puppet.rig; },
   chest(out = new V3()) { const p = this.pos; return out.set(p.x, p.y + 1.2, p.z); },
   takeDamage(dmg, post, point, dir, o = {}) {
@@ -325,8 +325,8 @@ const Duel = {
   },
   place() {
     const side = this.match.side === 1 ? 1 : -1, p = G.player;
-    p.pos.set(0, 0, 9 * side); p.yaw = side > 0 ? Math.PI : 0;
-    Opp.puppet.pos.set(0, 0, -9 * side); Opp.puppet.yaw = side > 0 ? 0 : Math.PI;
+    p.pos.set(0, 0, 5.5 * side); p.yaw = side > 0 ? Math.PI : 0;
+    Opp.puppet.pos.set(0, 0, -5.5 * side); Opp.puppet.yaw = side > 0 ? 0 : Math.PI;
     Opp.puppet.rig.root.position.copy(Opp.puppet.pos); Opp.puppet.rig.root.rotation.y = Opp.puppet.yaw;
   },
   renderRounds() {

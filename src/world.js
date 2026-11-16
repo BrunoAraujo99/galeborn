@@ -321,7 +321,7 @@ const World = {
   buildDestructibles() {
     this.dpillars = []; this.debris = []; this.craters = [];
     this.stoneMat = toon(0xc2b29c); this.stoneMat2 = toon(0x8e7e6e); this.floorMat = toon(0xb6a48e);
-    const N = 6, R = 16.5;
+    const N = 6, R = ARENA_R * 0.66;
     const baseStone = this.stoneMat, baseStone2 = this.stoneMat2;
     for (let i = 0; i < N; i++) {
       this.stoneMat = baseStone.clone(); this.stoneMat2 = baseStone2.clone();
