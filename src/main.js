@@ -295,7 +295,7 @@ function main() {
   World.build(Render.scene);
   Settings.load();
   Input.init(Render.r.domElement);
-  HUD.init();
+  HUD.init(); NEON.init();
   CutIn.init();
   Menu.init(); Settings.apply(); Select.build(); if (!IS_BOT) { Lobby.init(); Profile.init(); Clips.init(); } SpeedLines.init();
   try { const h = localStorage.getItem('galeborn.hero'); if (HEROES[h]) Hero.apply(h); } catch (e) {}

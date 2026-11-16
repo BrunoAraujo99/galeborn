@@ -135,7 +135,7 @@ const Duel = {
     this.place();
     this.renderRounds();
     document.querySelector('#bossbar .bn').textContent = match.opp.name;
-    if (!this.bossEmb) this.bossEmb = $('bbEmb').innerHTML; $('bbEmb').innerHTML = heroGlyph(match.opp.hero);
+    if (!this.bossEmb) this.bossEmb = $('bbEmb').innerHTML; $('bbEmb').innerHTML = heroGlyph(match.opp.hero); NEON.setOpp(match.opp.hero);
     $('postRow').style.display = 'none'; document.body.classList.add('duel');
     document.querySelector('#bossbar small').textContent = odef.name + ' · ' + odef.title + (match.opp.rating ? ' · ' + (isFinite(+match.opp.rating) ? tierOf(match.opp.rating).name + ' ' : '') + match.opp.rating : '');
     $('title').classList.add('hide'); $('hud').classList.add('show'); $('lobby').classList.remove('show');
@@ -331,7 +331,7 @@ const Duel = {
   },
   renderRounds() {
     const pip = n => [0, 1].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
-    $('rounds').innerHTML = `<span class="me">${pip(this.wins[0])}</span><b>ROUND ${Math.min(this.round, 3)}</b><span class="op">${pip(this.wins[1])}</span>`;
+    $('rounds').innerHTML = `<span class="me">${pip(this.wins[0])}</span><b><small>ROUND</small>${Math.min(this.round, 3)}</b><span class="op">${pip(this.wins[1])}</span>`;
   },
   nextRound() {
     this.round++; this.ended = false; this.started = false;
@@ -374,7 +374,7 @@ const Duel = {
     for (const pr of G.proj) if (pr.owner === 'ghost') pr.explode(true);
     G.boss = G.realBoss; G.boss.rig.root.visible = true;
     document.querySelector('#bossbar .bn').textContent = 'VARUKH';
-    if (this.bossEmb) $('bbEmb').innerHTML = this.bossEmb; $('postRow').style.display = ''; document.body.classList.remove('duel');
+    if (this.bossEmb) $('bbEmb').innerHTML = this.bossEmb; NEON.setOpp(null); $('postRow').style.display = ''; document.body.classList.remove('duel');
     document.querySelector('#bossbar small').textContent = 'THE CINDER WARDEN';
     $('retryBtn').textContent = 'FIGHT AGAIN'; $('heroBtn').textContent = 'CHANGE HERO';
     this.active = false; this.started = false; G.mode = 'solo';

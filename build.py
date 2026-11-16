@@ -1,5 +1,5 @@
 import sys, base64, os, glob, json, shutil, datetime
-order=['core','audio','fx','heroes','rig','heromodel','world','combat','player','boss','ui','anime','moments','clips','spectacle','kits','movesets','depth','arena','tempo','clarity','training','progress','profile','select','net','duel','bot','lobby','settings','perf','main']
+order=['core','audio','fx','heroes','rig','heromodel','world','combat','player','boss','ui','anime','moments','clips','spectacle','kits','movesets','depth','arena','tempo','clarity','training','progress','profile','select','net','duel','bot','lobby','settings','perf','neon','main']
 game='\n'.join(open(f'src/{n}.js').read() for n in order)
 libs=open('src/three.min.js').read()+'\n'+open('src/gltfloader.js').read()+'\n'+open('src/vendor/supabase.js').read()
 HEROES=['wind','fire','earth','water']
@@ -7,8 +7,16 @@ audio=sorted(glob.glob('assets/audio/*.mp3'))
 assert '</script' not in libs and '</script' not in game
 BUILD_ID=datetime.datetime.now(datetime.timezone.utc).strftime('%m%d-%H%M')
 print('BUILD', BUILD_ID)
+FONTS=[('Dela Gothic One','400','normal','dela.woff2'),('Anton','400','normal','Anton_400_normal.woff2'),('Archivo','800 900','italic','Archivo_900_italic.woff2')]
+ff=''.join("@font-face{font-family:'%s';font-style:%s;font-weight:%s;font-display:block;src:url(data:font/woff2;base64,%s) format('woff2')}" % (f,st,w,base64.b64encode(open('assets/fonts/'+fn,'rb').read()).decode()) for f,w,st,fn in FONTS)
+THEME='<style>'+ff+'\n'+open('src/theme.css').read()+'</style>'
+ART={k:{h:'data:image/webp;base64,'+base64.b64encode(open(f'assets/art/{k}_{h}.webp','rb').read()).decode() for h in HEROES} for k in ['face','body']}
+ARTJS='\nconst ART='+json.dumps(ART)+';\n'
+assert '</script' not in open('src/theme.css').read()
 def page(assets):
     html=open('src/index.html').read()
+    html=html.replace('</head>',THEME+'</head>',1)
+    assets=ARTJS+assets
     html=html.replace('</body>','<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build '+BUILD_ID+'</div></body>',1)
     return html.replace('<script>/*THREE*/</script>','<script>'+libs+assets+'</script>',1).replace('<script>/*GAME*/</script>','<script>\n'+game+'\n</script>',1)
 # 1) single self-contained file (works straight from disk)

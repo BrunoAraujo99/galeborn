@@ -392,22 +392,25 @@ body.cine #hud #bossbar, body.cine #hud #pbars, body.cine #hud #locktag { opacit
 <div id="profile" class="ovl"><div class="box pbox"><div id="profBody"></div><button class="btn small" data-act="close">CLOSE</button></div></div>
 <div id="board" class="ovl"><div class="box"><h2>LEADERBOARD</h2><div id="boardBody"></div><button class="btn small" id="boardClose">CLOSE</button></div></div>
 <div id="title">
-  <h1>GALEBORN</h1>
-  <h2>DUEL ON THE SUNDERED SPIRE</h2>
-  <div class="menu">
-    <div class="mgroup"><div class="mlabel">DUEL</div>
-      <button class="btn" id="playBtn">ONLINE <small>RANKED</small></button>
-      <button class="btn" id="friendBtn">VS A FRIEND <small>ROOM CODE</small></button>
-      <button class="btn" id="botBtn">VS A BOT <small>EASY · NORMAL · HARD</small></button>
+  <div class="tbg"></div><div class="tkanji" id="tKanji">風</div><img class="thero" id="tHero" alt="">
+  <div class="tslab"></div><div class="tstripe"></div>
+  <i class="spark" style="left:58%;top:16%;width:46px;height:46px"></i><i class="spark" style="left:88%;top:62%;width:32px;height:32px"></i><i class="spark" style="left:54%;top:72%;width:24px;height:24px"></i><i class="spark" style="left:80%;top:10%;width:18px;height:18px"></i>
+  <div class="tleft">
+    <h1><i>GALE</i><span>BORN</span></h1>
+    <div class="kata">ゲイルボーン</div>
+    <h2>DUEL ON THE SUNDERED SPIRE</h2>
+    <div class="menu">
+      <button class="btn" id="playBtn"><b>ONLINE</b><em>対戦</em><small>RANKED</small></button>
+      <button class="btn" id="friendBtn"><b>VS A FRIEND</b><em>友達</em><small>ROOM CODE</small></button>
+      <button class="btn" id="botBtn"><b>VS A BOT</b><em>練習相手</em><small>3 LEVELS</small></button>
+      <button class="btn" id="trainBtn"><b>TRAINING</b><em>修行</em><small>6 LESSONS</small></button>
+      <button class="btn" id="soloBtn"><b>SOLO BOSS</b><em>決戦</em><small>VARUKH</small></button>
     </div>
-    <div class="mgroup"><div class="mlabel">TRAIN</div>
-      <button class="btn alt" id="trainBtn">TRAINING ROOM <small>6 SHORT LESSONS</small></button>
-      <button class="btn alt" id="soloBtn">SOLO · VARUKH <small>BOSS FIGHT</small></button>
+    <div class="mbar">
+      <button class="mb" id="profBtn">PROFILE</button><button class="mb" id="lbBtn">LEADERBOARD</button><button class="mb" id="settingsBtn">SETTINGS</button><button class="mb" id="ctrlBtn">CONTROLS</button><a class="mb" id="dlBtn" href="galeborn-offline.html" download="Galeborn.html" title="One file that runs offline in any browser (about 24 MB)">DOWNLOAD</a>
     </div>
   </div>
-  <div class="mbar">
-    <button class="mb" id="profBtn">PROFILE</button><button class="mb" id="lbBtn">LEADERBOARD</button><button class="mb" id="settingsBtn">SETTINGS</button><button class="mb" id="ctrlBtn">CONTROLS</button><a class="mb" id="dlBtn" href="galeborn-offline.html" download="Galeborn.html" title="One file that runs offline in any browser (about 24 MB)">DOWNLOAD</a>
-  </div>
+  <div class="tep"><small id="tEpJ">風の舞手</small><b id="tEp">TAVI · THE WIND DANCER</b></div>
 </div>
 <div class="panel" id="pause"><h1>PAUSED</h1><h2 class="settingsTitle">SETTINGS</h2><div id="settings"></div><p class="hintline"><span class="ic" data-act="pause"></span> back</p></div>
 <div id="fps">60 FPS</div>

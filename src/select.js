@@ -17,7 +17,7 @@ const Select = {
   },
   build() {
     const box = $('selCards');
-    box.innerHTML = HERO_ORDER.map((id, i) => { const d = HEROES[id]; return `<div class="hcard" data-i="${i}" style="--hc:${d.css};--hc2:${d.css2}"><svg class="hg" viewBox="0 0 60 60">${heroGlyph(id)}</svg><b>${d.name}</b><span>${d.title}</span></div>`; }).join('');
+    box.innerHTML = HERO_ORDER.map((id, i) => { const d = HEROES[id]; return `<div class="hcard" data-i="${i}" style="--hc:${d.css};--hc2:${d.css2}"><div class="cf" style="--g1:${NEON.grad[id][0]};--g2:${NEON.grad[id][1]}">${NEON.face(id)}</div><b>${d.name}</b><em>${NEON.jp[id]}</em><span>${d.title}</span></div>`; }).join('');
     box.addEventListener('click', e => { const c = e.target.closest('.hcard'); if (!c) return; const i = +c.dataset.i; if (i === this.idx) this.confirm(); else this.pick(i); });
     $('selGo').addEventListener('click', () => this.confirm());
   },
@@ -33,7 +33,7 @@ const Select = {
     document.querySelectorAll('#selCards .hcard').forEach((c, i) => c.classList.toggle('on', i === this.idx));
     const st = d.stats, bar = (v, max) => `<i style="width:${Math.round(clamp(v / max, 0.1, 1) * 100)}%"></i>`;
     $('selInfo').style.setProperty('--hc', d.css); $('selInfo').style.setProperty('--hc2', d.css2);
-    $('selInfo').innerHTML = `<div class="sn">${d.name}</div><div class="st">${d.title}</div><p>${d.blurb}</p>
+    $('selInfo').innerHTML = `<div class="sj">${NEON.jpTitle[HERO_ORDER[this.idx]]}</div><div class="sn">${d.name}</div><div class="st">${d.title}</div><p>${d.blurb}</p>
       <div class="ss"><span>VITALITY</span><em>${bar(st.hp, 115)}</em><span>POWER</span><em>${bar(st.dmg, 1.15)}</em><span>SPEED</span><em>${bar(st.speed, 1.05)}</em></div>
       <div class="sg">${d.sig}</div><div class="su">ULTIMATE · ${d.ult.name}</div>`;
   },

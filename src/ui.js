@@ -89,7 +89,7 @@ const HUD = {
   },
   setHero() {
     const d = Hero.def;
-    $('pname').innerHTML = `${d.name} <small>${d.title}</small>`;
+    $('pname').innerHTML = `${d.name} <small>${d.title}</small>`; if (typeof NEON !== 'undefined') NEON.setMe();
     $('hcN').textContent = d.name; $('hcT').textContent = d.title; $('vsH').textContent = d.name; $('ultLbl').textContent = d.ult.tag;
     const pf = document.querySelector('.portrait .pface'); if (pf) pf.innerHTML = heroGlyph(Hero.id);
   },

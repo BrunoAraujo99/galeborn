@@ -92,7 +92,7 @@ const Progress = {
     if (sk.main) { HC.main = sk.main; HC.pale = sk.pale; HC.glow = sk.glow; HC.mid = sk.main; HC.aura = sk.main; C.wind.setHex(sk.main); }
     const p = G.player; if (p) { this.paint(p.rig, sk); for (const k in p.trails) p.trails[k].mat.uniforms.color.value.setHex(k === 'F' ? HC.pale : HC.main); }
     const t = this.titleOf(h);
-    if ($('pname')) $('pname').innerHTML = `${Hero.def.name} <small>${t || Hero.def.title}</small>`;
+    if ($('pname')) $('pname').innerHTML = `${Hero.def.name} <small>${t || Hero.def.title}</small>`; if (typeof NEON !== 'undefined') NEON.setMe();
   },
   hello() { const h = Hero.id; return { sk: this.sel(h).skin && this.skinOf(h).tint ? SKINS.indexOf(this.skinOf(h)) : 0, ti: this.titleOf(h), fi: this.finOf(h) }; },
   applyOpp(m) {
