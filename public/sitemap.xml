@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://playgaleborn.fun/</loc>
+    <lastmod>2026-11-16</lastmod>
+  </url>
+  <url>
+    <loc>https://playgaleborn.fun/about/</loc>
+    <lastmod>2026-11-16</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://playgaleborn.fun/about/"/>
+    <xhtml:link rel="alternate" hreflang="pt" href="https://playgaleborn.fun/pt/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://playgaleborn.fun/fr/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://playgaleborn.fun/de/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://playgaleborn.fun/zh/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://playgaleborn.fun/about/"/>
+  </url>
+  <url>
+    <loc>https://playgaleborn.fun/pt/</loc>
+    <lastmod>2026-11-16</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://playgaleborn.fun/about/"/>
+    <xhtml:link rel="alternate" hreflang="pt" href="https://playgaleborn.fun/pt/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://playgaleborn.fun/fr/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://playgaleborn.fun/de/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://playgaleborn.fun/zh/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://playgaleborn.fun/about/"/>
+  </url>
+  <url>
+    <loc>https://playgaleborn.fun/fr/</loc>
+    <lastmod>2026-11-16</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://playgaleborn.fun/about/"/>
+    <xhtml:link rel="alternate" hreflang="pt" href="https://playgaleborn.fun/pt/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://playgaleborn.fun/fr/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://playgaleborn.fun/de/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://playgaleborn.fun/zh/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://playgaleborn.fun/about/"/>
+  </url>
+  <url>
+    <loc>https://playgaleborn.fun/de/</loc>
+    <lastmod>2026-11-16</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://playgaleborn.fun/about/"/>
+    <xhtml:link rel="alternate" hreflang="pt" href="https://playgaleborn.fun/pt/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://playgaleborn.fun/fr/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://playgaleborn.fun/de/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://playgaleborn.fun/zh/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://playgaleborn.fun/about/"/>
+  </url>
+  <url>
+    <loc>https://playgaleborn.fun/zh/</loc>
+    <lastmod>2026-11-16</lastmod>
+    <xhtml:link rel="alternate" hreflang="en" href="https://playgaleborn.fun/about/"/>
+    <xhtml:link rel="alternate" hreflang="pt" href="https://playgaleborn.fun/pt/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://playgaleborn.fun/fr/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://playgaleborn.fun/de/"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://playgaleborn.fun/zh/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://playgaleborn.fun/about/"/>
+  </url>
+</urlset>

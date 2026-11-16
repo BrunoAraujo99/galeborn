@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Galeborn : jeu de combat anime gratuit dans le navigateur</title>
+<meta name="description" content="Galeborn est un jeu de combat anime 3D gratuit, jouable dans le navigateur. Affrontez vos amis ou des joueurs classés en ligne, des bots ou un boss. Sans téléchargement.">
+<link rel="canonical" href="https://playgaleborn.fun/fr/">
+<link rel="alternate" hreflang="en" href="https://playgaleborn.fun/about/">
+<link rel="alternate" hreflang="pt" href="https://playgaleborn.fun/pt/">
+<link rel="alternate" hreflang="fr" href="https://playgaleborn.fun/fr/">
+<link rel="alternate" hreflang="de" href="https://playgaleborn.fun/de/">
+<link rel="alternate" hreflang="zh-Hans" href="https://playgaleborn.fun/zh/">
+<link rel="alternate" hreflang="x-default" href="https://playgaleborn.fun/about/">
+<meta name="theme-color" content="#120b24">
+<link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192"><link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Galeborn"><meta property="og:url" content="https://playgaleborn.fun/fr/">
+<meta property="og:title" content="Galeborn : jeu de combat anime gratuit dans le navigateur"><meta property="og:description" content="Galeborn est un jeu de combat anime 3D gratuit, jouable dans le navigateur. Affrontez vos amis ou des joueurs classés en ligne, des bots ou un boss. Sans téléchargement.">
+<meta property="og:image" content="https://playgaleborn.fun/og.jpg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://playgaleborn.fun/og.jpg">
+<link rel="preload" href="/fonts/anton.woff2" as="font" type="font/woff2" crossorigin>
+<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "WebPage", "@id": "https://playgaleborn.fun/fr/", "url": "https://playgaleborn.fun/fr/", "name": "Galeborn : jeu de combat anime gratuit dans le navigateur", "description": "Galeborn est un jeu de combat anime 3D gratuit, jouable dans le navigateur. Affrontez vos amis ou des joueurs classés en ligne, des bots ou un boss. Sans téléchargement.", "inLanguage": "fr", "about": {"@id": "https://playgaleborn.fun/#game"}}, {"@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Galeborn est-il gratuit ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui. Galeborn est entièrement gratuit et se joue dans le navigateur."}}, {"@type": "Question", "name": "Faut-il télécharger quelque chose ?", "acceptedAnswer": {"@type": "Answer", "text": "Non. Le jeu tourne dans le navigateur. Un fichier optionnel pour jouer hors ligne est aussi proposé sur l’écran titre."}}, {"@type": "Question", "name": "Peut-on jouer entre amis ?", "acceptedAnswer": {"@type": "Answer", "text": "Oui. Choisissez Contre un ami et partagez le code du salon ou le lien d’invitation."}}]}]}</script>
+<style>@font-face{font-family:Anton;font-display:swap;src:url(/fonts/anton.woff2) format('woff2')}
+:root{--bg:#0d0b12;--panel:#160f2a;--ink:#f4ecdf;--mut:#b9b0c9;--mag:#ff3d9a;--cy:#22e6ff}
+*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Segoe UI",system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+a{color:var(--cy)}main{max-width:960px;margin:0 auto;padding:0 16px 48px}
+.hero{display:grid;grid-template-columns:1.2fr .8fr;gap:24px;align-items:center;padding:32px 0 8px}
+.logo{font:64px/0.9 Anton,Impact,sans-serif;font-style:italic;letter-spacing:.02em;margin:0;color:#fff;text-shadow:4px 4px 0 var(--mag),-2px -2px 0 var(--cy)}
+h1{font-size:26px;line-height:1.25;margin:14px 0 10px}h2{font:26px/1.2 Anton,Impact,sans-serif;letter-spacing:.03em;margin:40px 0 12px;color:#fff;border-left:5px solid var(--mag);padding-left:12px}
+.lead{color:var(--mut);font-size:17px}.cta{display:inline-block;margin:18px 0 4px;padding:14px 30px;background:linear-gradient(90deg,var(--mag),#8a3dff);color:#fff;font-weight:900;font-size:19px;letter-spacing:.08em;text-decoration:none;text-transform:uppercase;transform:skewX(-10deg);box-shadow:6px 6px 0 var(--cy)}
+.cta:hover{filter:brightness(1.15)}.sub{font-size:13px;color:var(--mut)}
+.shot img{width:100%;height:auto;display:block;border:2px solid var(--cy);box-shadow:0 0 30px rgba(255,61,154,.45)}
+ul.modes{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+ul.modes li{background:var(--panel);padding:14px 16px;border-left:4px solid var(--cy)}
+.fighters{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.f{background:var(--panel);padding:12px;text-align:center;border-top:4px solid var(--c)}.f img{height:220px;width:auto;max-width:100%}
+.f h3{margin:6px 0 0;font:24px Anton,Impact,sans-serif;letter-spacing:.03em}.f small{display:block;color:var(--c);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:12px}.f p{margin:6px 0 0;font-size:14px;color:var(--mut)}
+dl dt{font-weight:700;margin-top:12px}dl dd{margin:2px 0 0;color:var(--mut)}
+footer{max-width:960px;margin:0 auto;padding:16px 16px 40px;color:var(--mut);font-size:14px;border-top:1px solid #2a2140}
+footer a{margin-right:14px}
+@media (max-width:720px){.hero{grid-template-columns:1fr}.logo{font-size:48px}}</style>
+</head>
+<body>
+<main>
+<section class="hero">
+<div>
+<p class="logo">GALEBORN</p>
+<h1>Galeborn, un jeu de duels élémentaires anime gratuit</h1>
+<p class="lead">Galeborn est un jeu de combat anime 3D gratuit qui se lance directement dans votre navigateur, sans téléchargement ni installation. Choisissez un combattant qui maîtrise le vent, le feu, la terre ou l’eau et réglez vos comptes dans des duels en un contre un, rapides et cinématiques.</p>
+<a class="cta" href="/">Jouer gratuitement</a>
+<div class="sub">Fonctionne sur Chrome, Edge, Firefox et Safari</div>
+</div>
+<div class="shot"><img src="/og.jpg" alt="Galeborn" width="1200" height="630"></div>
+</section>
+<h2>Modes de jeu</h2><ul class="modes"><li><b>En ligne classé</b><br>Matchmaking contre des joueurs du monde entier, avec rangs, saisons et classement.</li><li><b>Contre un ami</b><br>Partagez un code de salon ou un lien d’invitation et affrontez un ami en ligne.</li><li><b>Contre un bot</b><br>Entraînez-vous contre des adversaires IA sur trois niveaux de difficulté.</li><li><b>Entraînement</b><br>Six leçons sur le déplacement, les combos, la garde, la parade et le burst.</li><li><b>Boss en solo</b><br>Affrontez Varukh, le Gardien des Cendres, un boss de feu en deux phases.</li></ul>
+<h2>Combattants</h2><div class="fighters"><div class="f" style="--c:#22e6ff"><img src="/img/wind.webp" alt="Tavi, Le Danseur du Vent" width="445" height="900" loading="lazy"><h3>Tavi</h3><small>Le Danseur du Vent</small><p>Combos aériens rapides, dashs et l’ultime Tempest.</p></div><div class="f" style="--c:#ff6a1a"><img src="/img/fire.webp" alt="Soren, Le Poing Solaire" width="445" height="900" loading="lazy"><h3>Soren</h3><small>Le Poing Solaire</small><p>Arts martiaux de feu agressifs et enchaînements brûlants.</p></div><div class="f" style="--c:#c9a24a"><img src="/img/earth.webp" alt="Brannoc, Le Rempart" width="445" height="900" loading="lazy"><h3>Brannoc</h3><small>Le Rempart</small><p>Frappes de terre lourdes, brise-garde et pics de pierre.</p></div><div class="f" style="--c:#3d8bff"><img src="/img/water.webp" alt="Ysra, L’Invocatrice des Marées" width="445" height="900" loading="lazy"><h3>Ysra</h3><small>L’Invocatrice des Marées</small><p>Combos d’eau fluides et contrôle de l’adversaire.</p></div></div>
+<h2>Combat anime</h2><p>Projections, combos aériens, parades, brise-garde, duels de rayons, sorties de ring et coups de grâce au ralenti, avec impact frames façon anime et caméra cinématique. Chaque élément a son propre jeu de coups.</p>
+<h2>Arènes</h2><p>Lantern Strait au coucher du soleil, Thunderhead Spire sous les éclairs et Frostbell Pass dans le blizzard, chacune avec des piliers destructibles.</p>
+<h2>Comment jouer</h2><p>Jouez au clavier et à la souris ou à la manette sur tout ordinateur doté d’un navigateur récent et de WebGL. Galeborn est gratuit : ouvrez le jeu et choisissez En ligne, Contre un ami, Contre un bot, Entraînement ou Boss en solo.</p><a class="cta" href="/">Jouer gratuitement</a>
+<h2>Questions</h2><dl><dt>Galeborn est-il gratuit ?</dt><dd>Oui. Galeborn est entièrement gratuit et se joue dans le navigateur.</dd><dt>Faut-il télécharger quelque chose ?</dt><dd>Non. Le jeu tourne dans le navigateur. Un fichier optionnel pour jouer hors ligne est aussi proposé sur l’écran titre.</dd><dt>Peut-on jouer entre amis ?</dt><dd>Oui. Choisissez Contre un ami et partagez le code du salon ou le lien d’invitation.</dd></dl>
+</main>
+<footer><b>Langues:</b> <a href="/about/" hreflang="en" lang="en">English</a><a href="/pt/" hreflang="pt" lang="pt">Português</a><a href="/fr/" hreflang="fr" lang="fr">Français</a><a href="/de/" hreflang="de" lang="de">Deutsch</a><a href="/zh/" hreflang="zh-Hans" lang="zh-Hans">简体中文</a><br><a href="/">playgaleborn.fun</a></footer>
+</body>
+</html>
