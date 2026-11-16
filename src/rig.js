@@ -15,9 +15,10 @@ class Rig {
     this.root = new THREE.Group();
     this.j = {};
     this.cur = {}; this.target = {};
-    for (const n of JOINTS) { this.cur[n] = [0, 0, 0]; this.target[n] = [0, 0, 0]; }
-    this.cur.hipsY = 0; this.target.hipsY = 0;
-    this.rate = 14;
+    this.pv = {};
+    for (const n of JOINTS) { this.cur[n] = [0, 0, 0]; this.target[n] = [0, 0, 0]; this.pv[n] = [0, 0, 0]; }
+    this.cur.hipsY = 0; this.target.hipsY = 0; this.pvY = 0;
+    this.rate = 14; this.zeta = 1;
     this.addHips = [0, 0];
     this.mats = [];
     this.build(spec);
@@ -71,22 +72,28 @@ class Rig {
     }
     if (s.extras) s.extras(this, s);
   }
-  setPose(p, rate) {
+  // poses are reached through a damped spring: zeta 1 eases in and settles (weight),
+  // zeta < 1 overshoots and settles back (snap + follow-through on strikes)
+  setPose(p, rate, zeta) {
     for (const n of JOINTS) { const v = p[n] || ZERO3; const t = this.target[n]; t[0] = v[0]; t[1] = v[1]; t[2] = v[2]; }
     this.target.hipsY = p.hipsY || 0;
     if (rate) this.rate = rate;
+    this.zeta = zeta || 1;
   }
-  snap() { for (const n of JOINTS) { const c = this.cur[n], t = this.target[n]; c[0] = t[0]; c[1] = t[1]; c[2] = t[2]; } this.cur.hipsY = this.target.hipsY; }
+  // push a joint's spring (radians per second): whips the pose, then it settles back
+  kick(n, x, y, z) { const v = this.pv[n]; if (v) { v[0] += x; v[1] += y; v[2] += z; } }
+  snap() { for (const n of JOINTS) { const c = this.cur[n], t = this.target[n], v = this.pv[n]; c[0] = t[0]; c[1] = t[1]; c[2] = t[2]; v[0] = v[1] = v[2] = 0; } this.cur.hipsY = this.target.hipsY; this.pvY = 0; }
   update(dt) {
-    const k = 1 - Math.exp(-this.rate * dt);
+    const w = this.rate * 1.5, z = this.zeta, w2 = w * w, d2 = 2 * z * w;
+    const ns = dt > 0 ? Math.min(24, Math.ceil(dt * w / 0.3)) : 0, h = ns ? dt / ns : 0;
     for (const n of JOINTS) {
-      const c = this.cur[n], t = this.target[n];
-      c[0] += (t[0] - c[0]) * k; c[1] += (t[1] - c[1]) * k; c[2] += (t[2] - c[2]) * k;
+      const c = this.cur[n], t = this.target[n], v = this.pv[n];
+      for (let s = 0; s < ns; s++) for (let i = 0; i < 3; i++) { v[i] += (w2 * (t[i] - c[i]) - d2 * v[i]) * h; c[i] += v[i] * h; }
       this.j[n].rotation.set(c[0], c[1], c[2]);
     }
+    for (let s = 0; s < ns; s++) { this.pvY += (w2 * (this.target.hipsY - this.cur.hipsY) - d2 * this.pvY) * h; this.cur.hipsY += this.pvY * h; }
     const ad = this.addHips;
     if (ad) { this.j.hips.rotation.x += ad[0]; this.j.hips.rotation.y += ad[1]; ad[0] = 0; ad[1] = 0; }
-    this.cur.hipsY += (this.target.hipsY - this.cur.hipsY) * k;
     this.j.hips.position.y = this.hipBase + this.cur.hipsY;
     if (this.model) this.model.update(dt);
   }

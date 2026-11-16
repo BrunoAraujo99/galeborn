@@ -22,10 +22,12 @@ class Particles {
     this.c0 = new Float32Array(max * 3); this.c1 = new Float32Array(max * 3);
     this.drag = new Float32Array(max); this.grav = new Float32Array(max);
     this.a0 = new Float32Array(max);
+    this.sk = new Float32Array(max * 2); // per particle: random seed, life progress (smoke shape + erosion)
+    g.setAttribute('sk', new THREE.BufferAttribute(this.sk, 2).setUsage(THREE.DynamicDrawUsage));
     this.mat = new THREE.ShaderMaterial({
       uniforms: { scale: { value: 800 } },
-      vertexShader: `attribute float size; attribute float alpha; attribute vec3 pcolor; varying vec3 vC; varying float vA; uniform float scale;
-        void main(){ vC = pcolor; vA = alpha; vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      vertexShader: `attribute float size; attribute float alpha; attribute vec3 pcolor; attribute vec2 sk; varying vec3 vC; varying float vA; varying vec2 vK; uniform float scale;
+        void main(){ vC = pcolor; vA = alpha; vK = sk; vec4 mv = modelViewMatrix * vec4(position, 1.0);
           gl_PointSize = alpha > 0.001 ? size * scale / max(-mv.z, 0.1) : 0.0; gl_Position = projectionMatrix * mv; }`,
       fragmentShader: additive
         ? `varying vec3 vC; varying float vA;
@@ -36,14 +38,20 @@ class Particles {
           vec3 c = mix(vC, vec3(1.0, 0.97, 0.9), core * 0.5);
           float s = floor(vA * 4.0 + 0.5) / 4.0;
           gl_FragColor = vec4(c, a * s * 0.8); }`
-        : `varying vec3 vC; varying float vA;
+        : `varying vec3 vC; varying float vA; varying vec2 vK;
+        float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float n2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h(i), h(i + vec2(1.0, 0.0)), f.x), mix(h(i + vec2(0.0, 1.0)), h(i + vec2(1.0, 1.0)), f.x), f.y); }
         void main(){ vec2 d = gl_PointCoord - 0.5; float r = length(d) * 2.0;
-          // flat cel blob: solid fill, ink rim, lit cap
-          if (r > 1.0) discard;
-          float rim = smoothstep(0.8, 0.86, r);
-          float lit = step(0.0, -(d.x + d.y) - 0.08) * (1.0 - rim);
-          vec3 c = mix(vC, vC * 1.25 + 0.05, lit);
-          c = mix(c, vC * 0.35, rim);
+          // painted smoke puff: lumpy cloud outline, two-tone cel shading, breaks apart as it dies
+          float sd = vK.x * 6.2832, a = atan(d.y, d.x);
+          float lump = 0.86 + 0.07 * sin(a * 3.0 + sd) + 0.04 * sin(a * 6.0 + sd * 2.3);
+          float edge = lump * (1.0 - 0.18 * vK.y);
+          if (r > edge) discard;
+          // dissolves into holes as it dies rather than fading flat
+          if (n2(d * 3.2 + vK.x * 31.0) * 0.8 + 0.2 * (1.0 - r) < vK.y * vK.y * 0.85) discard;
+          float term = dot(d, vec2(-0.7071, 0.7071)) + 0.07 * sin(a * 4.0 + sd * 1.7) - 0.05;
+          vec3 c = term > 0.0 ? vC * 1.15 + 0.07 : vC * 0.78;
+          c = mix(c, vC * 0.55, smoothstep(edge - 0.1, edge, r) * 0.5);
           float s = floor(vA * 3.0 + 0.6) / 3.0;
           gl_FragColor = vec4(c, s); }`,
       transparent: true, depthWrite: false,
@@ -63,6 +71,7 @@ class Particles {
     this.c0[i3] = c0.r; this.c0[i3 + 1] = c0.g; this.c0[i3 + 2] = c0.b;
     this.c1[i3] = c1.r; this.c1[i3 + 1] = c1.g; this.c1[i3 + 2] = c1.b;
     this.drag[i] = drag; this.grav[i] = grav; this.a0[i] = a0;
+    this.sk[i * 2] = Math.random(); this.sk[i * 2 + 1] = 0;
   }
   update(dt) {
     const P = this.pos, Vv = this.vel;
@@ -79,11 +88,12 @@ class Particles {
       this.col[i3 + 1] = lerp(this.c0[i3 + 1], this.c1[i3 + 1], k);
       this.col[i3 + 2] = lerp(this.c0[i3 + 2], this.c1[i3 + 2], k);
       this.alpha[i] = this.life[i] > 0 ? this.a0[i] * Math.min(1, (1 - k) * 3) : 0;
+      this.sk[i * 2 + 1] = k;
     }
     // smoke / dust animate "on twos" like hand-drawn effects
     if (this.stepped) { this.acc = (this.acc || 0) + dt; if (this.acc < 1 / 12 && dt > 0) return; this.acc = 0; }
     const g = this.geo.attributes;
-    g.position.needsUpdate = g.pcolor.needsUpdate = g.alpha.needsUpdate = g.size.needsUpdate = true;
+    g.position.needsUpdate = g.pcolor.needsUpdate = g.alpha.needsUpdate = g.size.needsUpdate = g.sk.needsUpdate = true;
   }
   clear() { this.life.fill(0); this.alpha.fill(0); }
 }
@@ -378,7 +388,7 @@ const FX = {
     if (E) return this.elemSpark(p, dir, big, E);
     const c0 = fire ? C.fireHot : C.white, c1 = fire ? C.ember : C.wind;
     this.burst(p, big ? 46 : 22, { speed: big ? 22 : 15, dir, spread: 1.1, life: 0.35, s0: big ? 0.45 : 0.3, c0, c1, drag: 7 });
-    this.burst(p, big ? 14 : 6, { speed: 4, life: 0.6, s0: 0.9, s1: 1.8, c0: fire ? C.smokeL : new THREE.Color(0.8, 0.95, 1), c1: fire ? C.smoke : new THREE.Color(0.5, 0.7, 0.8), drag: 3, add: false, alpha: 0.35 });
+    this.burst(p, big ? 10 : 4, { speed: big ? 9 : 7, life: big ? 0.55 : 0.4, s0: 0.5, s1: big ? 1.2 : 0.9, c0: fire ? C.smokeL : new THREE.Color(0.8, 0.95, 1), c1: fire ? C.smoke : new THREE.Color(0.5, 0.7, 0.8), drag: 5, add: false, alpha: 0.55, jitter: 0.25 });
     this.star(p, big ? 2.8 : 1.8, fire ? 0xffaa44 : HC.pale, big ? 0.14 : 0.09);
     if (big) this.ringBill(p, 3.5, fire ? 0xff8833 : HC.pale, 0.25);
   },
@@ -386,7 +396,7 @@ const FX = {
   elemSpark(p, dir, big, E) {
     this.burst(p, big ? 40 : 20, { speed: big ? 22 : 15, dir, spread: 1.1, life: 0.35, s0: big ? 0.5 : 0.32, c0: E.c0, c1: E.c1, drag: 7 });
     this.burst(p, big ? 16 : 7, { speed: big ? 12 : 8, dir, spread: 1.6, life: 0.45, s0: big ? 0.38 : 0.26, c0: E.c1, c1: E.c2, drag: 5 });
-    this.burst(p, big ? 10 : 4, { speed: 4, life: 0.6, s0: 0.9, s1: 1.8, c0: E.c1, c1: E.c2, drag: 3, add: false, alpha: 0.3 });
+    this.burst(p, big ? 8 : 3, { speed: big ? 9 : 7, life: big ? 0.55 : 0.4, s0: 0.5, s1: big ? 1.15 : 0.85, c0: E.c1, c1: E.c2, drag: 5, add: false, alpha: 0.55, jitter: 0.25 });
     this.star(p, big ? 2.6 : 1.6, E.mid, big ? 0.15 : 0.09);
     if (big) { this.ringBill(p, 3.2, E.acc, 0.25); if (p.y < 2.5) this.groundRing(new THREE.Vector3(p.x, 0.05, p.z), 2.4, E.mid, 0.35); }
   },

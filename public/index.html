@@ -6104,10 +6104,12 @@ class Particles {
     this.c0 = new Float32Array(max * 3); this.c1 = new Float32Array(max * 3);
     this.drag = new Float32Array(max); this.grav = new Float32Array(max);
     this.a0 = new Float32Array(max);
+    this.sk = new Float32Array(max * 2); // per particle: random seed, life progress (smoke shape + erosion)
+    g.setAttribute('sk', new THREE.BufferAttribute(this.sk, 2).setUsage(THREE.DynamicDrawUsage));
     this.mat = new THREE.ShaderMaterial({
       uniforms: { scale: { value: 800 } },
-      vertexShader: `attribute float size; attribute float alpha; attribute vec3 pcolor; varying vec3 vC; varying float vA; uniform float scale;
-        void main(){ vC = pcolor; vA = alpha; vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      vertexShader: `attribute float size; attribute float alpha; attribute vec3 pcolor; attribute vec2 sk; varying vec3 vC; varying float vA; varying vec2 vK; uniform float scale;
+        void main(){ vC = pcolor; vA = alpha; vK = sk; vec4 mv = modelViewMatrix * vec4(position, 1.0);
           gl_PointSize = alpha > 0.001 ? size * scale / max(-mv.z, 0.1) : 0.0; gl_Position = projectionMatrix * mv; }`,
       fragmentShader: additive
         ? `varying vec3 vC; varying float vA;
@@ -6118,14 +6120,20 @@ class Particles {
           vec3 c = mix(vC, vec3(1.0, 0.97, 0.9), core * 0.5);
           float s = floor(vA * 4.0 + 0.5) / 4.0;
           gl_FragColor = vec4(c, a * s * 0.8); }`
-        : `varying vec3 vC; varying float vA;
+        : `varying vec3 vC; varying float vA; varying vec2 vK;
+        float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float n2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h(i), h(i + vec2(1.0, 0.0)), f.x), mix(h(i + vec2(0.0, 1.0)), h(i + vec2(1.0, 1.0)), f.x), f.y); }
         void main(){ vec2 d = gl_PointCoord - 0.5; float r = length(d) * 2.0;
-          // flat cel blob: solid fill, ink rim, lit cap
-          if (r > 1.0) discard;
-          float rim = smoothstep(0.8, 0.86, r);
-          float lit = step(0.0, -(d.x + d.y) - 0.08) * (1.0 - rim);
-          vec3 c = mix(vC, vC * 1.25 + 0.05, lit);
-          c = mix(c, vC * 0.35, rim);
+          // painted smoke puff: lumpy cloud outline, two-tone cel shading, breaks apart as it dies
+          float sd = vK.x * 6.2832, a = atan(d.y, d.x);
+          float lump = 0.86 + 0.07 * sin(a * 3.0 + sd) + 0.04 * sin(a * 6.0 + sd * 2.3);
+          float edge = lump * (1.0 - 0.18 * vK.y);
+          if (r > edge) discard;
+          // dissolves into holes as it dies rather than fading flat
+          if (n2(d * 3.2 + vK.x * 31.0) * 0.8 + 0.2 * (1.0 - r) < vK.y * vK.y * 0.85) discard;
+          float term = dot(d, vec2(-0.7071, 0.7071)) + 0.07 * sin(a * 4.0 + sd * 1.7) - 0.05;
+          vec3 c = term > 0.0 ? vC * 1.15 + 0.07 : vC * 0.78;
+          c = mix(c, vC * 0.55, smoothstep(edge - 0.1, edge, r) * 0.5);
           float s = floor(vA * 3.0 + 0.6) / 3.0;
           gl_FragColor = vec4(c, s); }`,
       transparent: true, depthWrite: false,
@@ -6145,6 +6153,7 @@ class Particles {
     this.c0[i3] = c0.r; this.c0[i3 + 1] = c0.g; this.c0[i3 + 2] = c0.b;
     this.c1[i3] = c1.r; this.c1[i3 + 1] = c1.g; this.c1[i3 + 2] = c1.b;
     this.drag[i] = drag; this.grav[i] = grav; this.a0[i] = a0;
+    this.sk[i * 2] = Math.random(); this.sk[i * 2 + 1] = 0;
   }
   update(dt) {
     const P = this.pos, Vv = this.vel;
@@ -6161,11 +6170,12 @@ class Particles {
       this.col[i3 + 1] = lerp(this.c0[i3 + 1], this.c1[i3 + 1], k);
       this.col[i3 + 2] = lerp(this.c0[i3 + 2], this.c1[i3 + 2], k);
       this.alpha[i] = this.life[i] > 0 ? this.a0[i] * Math.min(1, (1 - k) * 3) : 0;
+      this.sk[i * 2 + 1] = k;
     }
     // smoke / dust animate "on twos" like hand-drawn effects
     if (this.stepped) { this.acc = (this.acc || 0) + dt; if (this.acc < 1 / 12 && dt > 0) return; this.acc = 0; }
     const g = this.geo.attributes;
-    g.position.needsUpdate = g.pcolor.needsUpdate = g.alpha.needsUpdate = g.size.needsUpdate = true;
+    g.position.needsUpdate = g.pcolor.needsUpdate = g.alpha.needsUpdate = g.size.needsUpdate = g.sk.needsUpdate = true;
   }
   clear() { this.life.fill(0); this.alpha.fill(0); }
 }
@@ -6460,7 +6470,7 @@ const FX = {
     if (E) return this.elemSpark(p, dir, big, E);
     const c0 = fire ? C.fireHot : C.white, c1 = fire ? C.ember : C.wind;
     this.burst(p, big ? 46 : 22, { speed: big ? 22 : 15, dir, spread: 1.1, life: 0.35, s0: big ? 0.45 : 0.3, c0, c1, drag: 7 });
-    this.burst(p, big ? 14 : 6, { speed: 4, life: 0.6, s0: 0.9, s1: 1.8, c0: fire ? C.smokeL : new THREE.Color(0.8, 0.95, 1), c1: fire ? C.smoke : new THREE.Color(0.5, 0.7, 0.8), drag: 3, add: false, alpha: 0.35 });
+    this.burst(p, big ? 10 : 4, { speed: big ? 9 : 7, life: big ? 0.55 : 0.4, s0: 0.5, s1: big ? 1.2 : 0.9, c0: fire ? C.smokeL : new THREE.Color(0.8, 0.95, 1), c1: fire ? C.smoke : new THREE.Color(0.5, 0.7, 0.8), drag: 5, add: false, alpha: 0.55, jitter: 0.25 });
     this.star(p, big ? 2.8 : 1.8, fire ? 0xffaa44 : HC.pale, big ? 0.14 : 0.09);
     if (big) this.ringBill(p, 3.5, fire ? 0xff8833 : HC.pale, 0.25);
   },
@@ -6468,7 +6478,7 @@ const FX = {
   elemSpark(p, dir, big, E) {
     this.burst(p, big ? 40 : 20, { speed: big ? 22 : 15, dir, spread: 1.1, life: 0.35, s0: big ? 0.5 : 0.32, c0: E.c0, c1: E.c1, drag: 7 });
     this.burst(p, big ? 16 : 7, { speed: big ? 12 : 8, dir, spread: 1.6, life: 0.45, s0: big ? 0.38 : 0.26, c0: E.c1, c1: E.c2, drag: 5 });
-    this.burst(p, big ? 10 : 4, { speed: 4, life: 0.6, s0: 0.9, s1: 1.8, c0: E.c1, c1: E.c2, drag: 3, add: false, alpha: 0.3 });
+    this.burst(p, big ? 8 : 3, { speed: big ? 9 : 7, life: big ? 0.55 : 0.4, s0: 0.5, s1: big ? 1.15 : 0.85, c0: E.c1, c1: E.c2, drag: 5, add: false, alpha: 0.55, jitter: 0.25 });
     this.star(p, big ? 2.6 : 1.6, E.mid, big ? 0.15 : 0.09);
     if (big) { this.ringBill(p, 3.2, E.acc, 0.25); if (p.y < 2.5) this.groundRing(new THREE.Vector3(p.x, 0.05, p.z), 2.4, E.mid, 0.35); }
   },
@@ -6740,9 +6750,10 @@ class Rig {
     this.root = new THREE.Group();
     this.j = {};
     this.cur = {}; this.target = {};
-    for (const n of JOINTS) { this.cur[n] = [0, 0, 0]; this.target[n] = [0, 0, 0]; }
-    this.cur.hipsY = 0; this.target.hipsY = 0;
-    this.rate = 14;
+    this.pv = {};
+    for (const n of JOINTS) { this.cur[n] = [0, 0, 0]; this.target[n] = [0, 0, 0]; this.pv[n] = [0, 0, 0]; }
+    this.cur.hipsY = 0; this.target.hipsY = 0; this.pvY = 0;
+    this.rate = 14; this.zeta = 1;
     this.addHips = [0, 0];
     this.mats = [];
     this.build(spec);
@@ -6796,22 +6807,28 @@ class Rig {
     }
     if (s.extras) s.extras(this, s);
   }
-  setPose(p, rate) {
+  // poses are reached through a damped spring: zeta 1 eases in and settles (weight),
+  // zeta < 1 overshoots and settles back (snap + follow-through on strikes)
+  setPose(p, rate, zeta) {
     for (const n of JOINTS) { const v = p[n] || ZERO3; const t = this.target[n]; t[0] = v[0]; t[1] = v[1]; t[2] = v[2]; }
     this.target.hipsY = p.hipsY || 0;
     if (rate) this.rate = rate;
+    this.zeta = zeta || 1;
   }
-  snap() { for (const n of JOINTS) { const c = this.cur[n], t = this.target[n]; c[0] = t[0]; c[1] = t[1]; c[2] = t[2]; } this.cur.hipsY = this.target.hipsY; }
+  // push a joint's spring (radians per second): whips the pose, then it settles back
+  kick(n, x, y, z) { const v = this.pv[n]; if (v) { v[0] += x; v[1] += y; v[2] += z; } }
+  snap() { for (const n of JOINTS) { const c = this.cur[n], t = this.target[n], v = this.pv[n]; c[0] = t[0]; c[1] = t[1]; c[2] = t[2]; v[0] = v[1] = v[2] = 0; } this.cur.hipsY = this.target.hipsY; this.pvY = 0; }
   update(dt) {
-    const k = 1 - Math.exp(-this.rate * dt);
+    const w = this.rate * 1.5, z = this.zeta, w2 = w * w, d2 = 2 * z * w;
+    const ns = dt > 0 ? Math.min(24, Math.ceil(dt * w / 0.3)) : 0, h = ns ? dt / ns : 0;
     for (const n of JOINTS) {
-      const c = this.cur[n], t = this.target[n];
-      c[0] += (t[0] - c[0]) * k; c[1] += (t[1] - c[1]) * k; c[2] += (t[2] - c[2]) * k;
+      const c = this.cur[n], t = this.target[n], v = this.pv[n];
+      for (let s = 0; s < ns; s++) for (let i = 0; i < 3; i++) { v[i] += (w2 * (t[i] - c[i]) - d2 * v[i]) * h; c[i] += v[i] * h; }
       this.j[n].rotation.set(c[0], c[1], c[2]);
     }
+    for (let s = 0; s < ns; s++) { this.pvY += (w2 * (this.target.hipsY - this.cur.hipsY) - d2 * this.pvY) * h; this.cur.hipsY += this.pvY * h; }
     const ad = this.addHips;
     if (ad) { this.j.hips.rotation.x += ad[0]; this.j.hips.rotation.y += ad[1]; ad[0] = 0; ad[1] = 0; }
-    this.cur.hipsY += (this.target.hipsY - this.cur.hipsY) * k;
     this.j.hips.position.y = this.hipBase + this.cur.hipsY;
     if (this.model) this.model.update(dt);
   }
@@ -7913,7 +7930,7 @@ const G = {
   stats: null,
 };
 
-function hitstop(s) { if (G.mode === 'duel') s = Math.min(s, 0.06); G.hitstop = Math.max(G.hitstop, s); }
+function hitstop(s) { if (G.mode === 'duel') s = Math.min(s, 0.16); G.hitstop = Math.max(G.hitstop, s); }
 function slowmo(scale, dur) {
   // in a duel the other player keeps real time, so slow-motion is only a short accent
   if (G.mode === 'duel') { scale = Math.max(scale, 0.7); dur *= 0.4; } G.tsTarget = scale; G.timeScale = Math.min(G.timeScale, scale); G.slowT = Math.max(G.slowT, dur); }
@@ -8323,7 +8340,7 @@ class Player {
     else if (S === 'slamLand') { this.rig.setPose(HERO_POSES.slamLand, 20); this.vel.x = damp(this.vel.x, 0, 10, dt); this.vel.z = damp(this.vel.z, 0, 10, dt); if (this.st > 0.32 || (this.st > 0.18 && (this.buf === 'dash' || this.buf === 'jump'))) this.toMove(); }
     else if (S === 'hit') { this.rig.setPose(HERO_POSES.hit, 25); this.vel.x = damp(this.vel.x, 0, 6, dt); this.vel.z = damp(this.vel.z, 0, 6, dt); if (this.st > this.stunDur) this.toMove(); }
     else if (S === 'launched') this.updLaunched(dt);
-    else if (S === 'down') { this.rig.setPose(HERO_POSES.down, 12); this.vel.set(0, 0, 0); if (this.st > 0.6 || (this.st > 0.25 && (this.buf === 'dash' || this.buf === 'jump'))) { this.buf = null; this.invuln = 0.6; this.toMove(); Sfx.whoosh(1.2, 0.3); } }
+    else if (S === 'down') { this.rig.setPose(HERO_POSES.down, 12); this.vel.set(0, 0, 0); if (this.st > 0.6 || (this.st > 0.25 && (this.buf === 'dash' || this.buf === 'jump'))) { this.buf = null; this.invuln = 0.6; this.toMove(); Sfx.whoosh(1.2, 0.3); if (Duel.active) this.resetBeat(); } }
     else if (S === 'special') this.updSpecial(dt);
     else if (S === 'pursuit') Pursuit.update(this, dt);
     else if (S === 'beam') { this.rig.setPose(HERO_POSES.release, 20); this.vel.x = 0; this.vel.z = 0; }
@@ -8573,7 +8590,8 @@ class Player {
     const fwd = this.fwd();
     // pose
     if (t < m.a0) this.rig.setPose(HERO_POSES[m.w], 26);
-    else if (t < m.cancel + 0.05) this.rig.setPose(HERO_POSES[m.s], 38);
+    // strike: snap in fast and overshoot a little, then settle (follow-through)
+    else if (t < m.cancel + 0.05) this.rig.setPose(HERO_POSES[m.s], m.big ? 46 : 52, m.big ? 0.42 : 0.5);
     // soft tracking: strikes curve toward a nearby boss until they land
     if (t < m.a1 && G.boss.alive) { const d = this.bossDir(); if (d.length() < m.reach + G.boss.radius + 3) this.yaw = dampAngle(this.yaw, yawOf(d.x, d.z), 14, dt); }
     // anime smear: stretch the striking limb and leave an afterimage as the blow lands
@@ -8656,7 +8674,7 @@ class Player {
       const stale = Tempo.mult(m), gm = (this.grade === 'perfect' ? 1.2 : this.grade === 'mash' ? 0.85 : 1) * stale;
       this.meterMult = gm; this.hitLabel = this.grade === 'perfect' ? 'PERFECT' : stale < 0.9 ? 'STALE' : ''; this.hitKind = this.grade === 'perfect' ? 'gold' : stale < 0.9 ? 'stale' : '';
       const res = b.takeDamage(m.dmg * (sky ? 1.8 : 1) * gm, m.post * (sky ? 2 : 1) * gm, hp, hdir, { big: m.big || sky, src: 'melee', counter: m.counter, pull: m.pull, spike: m.spike, knock: sky ? 14 : m.counter ? 11 : m.pull ? m.pull : m.knock != null ? m.knock : m.finisher ? 15 : null });
-      if (res) this.onDealtHit(res, hp, fwd, m.big || sky, sky ? 0.14 : m.counter ? 0.16 : m.big ? 0.1 : 0.06, sky ? 'skyfall' : m.counter ? 'counter' : m.finisher ? 'finisher' : m.launcher ? 'launcher' : '');
+      if (res) this.onDealtHit(res, hp, fwd, m.big || sky, sky ? 0.15 : m.counter ? 0.16 : m.finisher ? 0.14 : m.big ? 0.12 : 0.05, sky ? 'skyfall' : m.counter ? 'counter' : m.finisher ? 'finisher' : m.launcher ? 'launcher' : '');
       if (res) { Tempo.land(m); if (this.grade === 'perfect') Tempo.perfect(this, hp); else if (stale < 0.9) Tempo.stale(hp); }
       this.meterMult = 1; this.hitLabel = ''; this.hitKind = '';
       if (res && sky) Moment.fire('SKYFALL', 'PILLAR VAULT → AIR STRIKE', hp, fwd, 2);
@@ -8679,7 +8697,7 @@ class Player {
     Kit.onHit(this, res, point, dir, big, tag);
     if (res.interrupt) Moment.fire('INTERRUPT', 'HIS ATTACK SHATTERED', point, dir, 2);
     Clarity.hit(big);
-    hitstop(stop);
+    hitstop(stop); Cam.beat(big, tag === 'finisher' || tag === 'launcher' || tag === 'counter' || tag === 'skyfall');
     FX.shake(big ? 0.55 : Clarity.fx(0.24));
     Sfx.hit(big ? 1.5 : 1);
     FX.hitSpark(point, dir, big, false, Hero.id);
@@ -8927,7 +8945,8 @@ class Player {
     this.combo = 0; this.counterT = 0;
     for (const k in this.trails) this.trails[k].emit = false;
     Clarity.hit(kind !== 'light');
-    Sfx.playerHurt(); FX.shake(kind === 'light' ? Clarity.fx(0.35) : 0.6); hitstop(kind === 'light' ? 0.06 : 0.1);
+    Sfx.playerHurt(); FX.shake(kind === 'light' ? Clarity.fx(0.35) : 0.6); hitstop(kind === 'light' ? 0.05 : 0.13);
+    this.reactKick(kind); Cam.beat(kind !== 'light' && kind !== 'chip', false);
     Render.post.aberr = kind === 'light' ? Clarity.fx(1.2) : 1.2;
     FX.dmgNumber(this.chest(), dmg, 'hurt'); if (kind !== 'light') { FX.sfxWord(this.chest(), true); Cam.dutch(0.06); }
     this.yaw = yawOf(-dir.x, -dir.z);
@@ -8951,7 +8970,7 @@ class Player {
     if (kind === 'spike') kind = 'heavy';
     if (kind === 'launch' || kind === 'heavy') {
       Sfx.loopOff('sfx_charge_loop'); setTimeout(() => Sfx.bv('taunt', 0.3, 10), 500);
-      this.state = 'launched'; this.st = 0;
+      this.state = 'launched'; this.st = 0; this.bounced = false;
       this.vel.set(dir.x * 9, kind === 'launch' ? 11 : 7, dir.z * 9); this.grounded = false;
     } else {
       // in a duel a light hit only nudges, so a well-timed string can actually combo
@@ -8960,6 +8979,27 @@ class Player {
       this.vel.set(dir.x * kb, Math.max(this.vel.y, 0), dir.z * kb);
     }
     return 'hit';
+  }
+  // hit reactions: whip the spine and head along the blow, then let the spring settle them
+  reactKick(kind) {
+    const r = this.rig; this.reactSide = -(this.reactSide || 1);
+    if (kind === 'light' || kind === 'chip') { r.kick('torso', -7, 5 * this.reactSide, 3 * this.reactSide); r.kick('head', -11, 9 * this.reactSide, 0); r.kick('shL', 4, 0, 6); r.kick('shR', 4, 0, -6); }
+    else { r.kick('torso', -16, 4 * this.reactSide, 0); r.kick('head', -18, 0, 0); r.kick('shL', -6, 0, 12); r.kick('shR', -6, 0, -12); }
+  }
+  // reset beat after a knockdown in a duel: the fighter springs back to mid range, which gives the fight a breath
+  resetBeat() {
+    if (!G.boss.alive) return;
+    const d = this.bossDir(); if (d.lengthSq() < 1e-4) return;
+    if (d.length() > 4.2) return; // already at range: no slide needed
+    this.yaw = yawOf(d.x, d.z);
+    // straight back if there is room, else peel off to the side, away from pillars and the edge
+    const away = d.clone().normalize().negate(), q = new V3();
+    for (const ang of [0, 0.7, -0.7, 1.4, -1.4]) {
+      const v = away.clone().applyAxisAngle(new V3(0, 1, 0), ang); q.copy(this.pos).addScaledVector(v, 3.6);
+      if (World.pillarAt(q, 0.7) || Math.hypot(q.x, q.z) > ARENA_R - 1.5) continue;
+      if (ang === 0) this.startDash(new V3(), false); else { this.startDash(v, true); this.yaw = yawOf(d.x, d.z); this.backstep = true; }
+      this.dodgeInv = 0.4; return;
+    }
   }
   knockback(dir, power) {
     if (!this.alive) return;
@@ -8975,6 +9015,14 @@ class Player {
       FX.ghost(this.rig, 0xffffff); Sfx.whoosh(1.4, 0.5);
       FX.burst(this.chest(), 20, { speed: 8, life: 0.35, s0: 0.3, c0: C.white, c1: C.wind });
       FX.popup(this.chest().add(new V3(0, 0.6, 0)), 'RECOVER', 'tag small', Render.camera);
+      return;
+    }
+    if (this.grounded && this.st > 0.1 && !this.bounced && Duel.active) {
+      // one ground bounce: the body hits the floor and pops back up before it settles
+      this.bounced = true; this.grounded = false; this.vel.y = 4.2; this.vel.x *= 0.45; this.vel.z *= 0.45;
+      FX.shake(0.35); Sfx.land(); Sfx.P('sfx_crater', 0.35);
+      FX.burst(this.pos.clone().setY(0.15), 16, { speed: 6, flat: true, life: 0.5, s0: 0.5, s1: 1.3, c0: C.dust, c1: C.dust, add: false, alpha: 0.45 });
+      this.rig.kick('torso', 10, 0, 0); this.rig.kick('head', 12, 0, 0);
       return;
     }
     if (this.grounded && this.st > 0.1) {
@@ -12176,7 +12224,11 @@ class Puppet {
   update(dt) {
     const S = this.snaps, rig = this.rig;
     if (!S.length) { rig.update(dt); return; }
-    const tr = performance.now() - 1000 / SNAP_HZ * 1.6; // render slightly in the past and interpolate
+    // render slightly in the past and interpolate; during our hit-stop the opponent freezes too
+    // (their timeline is held back, then catches up a little faster than real time)
+    const now = performance.now(), rd = now - (this.lastNow || now); this.lastNow = now;
+    if (G.hitstop > 0) this.lag = (this.lag || 0) + rd; else if (this.lag > 0) this.lag = Math.max(0, this.lag - rd * 0.35);
+    const tr = now - 1000 / SNAP_HZ * 1.6 - (this.lag || 0);
     let a = S[S.length - 1], b = a;
     for (let i = S.length - 1; i > 0; i--) if (S[i - 1].rt <= tr) { a = S[i - 1]; b = S[i]; break; }
     const k = b.rt > a.rt ? clamp((tr - a.rt) / (b.rt - a.rt), 0, 1) : 1;
@@ -12185,9 +12237,11 @@ class Puppet {
     const L = S[S.length - 1];
     this.state = L.s; this.hp = L.hp; this.maxHp = L.mh; this.flow = L.fl; this.vel.set(L.v[0], L.v[1], L.v[2]); this.awake = !!L.aw;
     rig.root.position.copy(this.pos); rig.root.rotation.y = this.yaw;
-    const pose = { hipsY: b.j[33] };
-    JOINTS.forEach((n, i) => { pose[n] = [b.j[i * 3], b.j[i * 3 + 1], b.j[i * 3 + 2]]; });
-    rig.setPose(pose, 30);
+    // joints interpolated between the two snapshots, followed tightly so strikes keep their snap
+    const pose = this.pose || (this.pose = {}), ja = a.j, jb = b.j;
+    pose.hipsY = lerp(ja[33], jb[33], k);
+    JOINTS.forEach((n, i) => { const q = pose[n] || (pose[n] = [0, 0, 0]); for (let c = 0; c < 3; c++) q[c] = lerp(ja[i * 3 + c], jb[i * 3 + c], k); });
+    rig.setPose(pose, 60);
     rig.clipReq = b.c || null;
     if (b.sm) { rig.smear = b.sm[0]; rig.smearLimb = b.sm[1]; }
     if (rig.model) rig.model.setAura(this.awake);
@@ -12536,6 +12590,8 @@ const IS_BOT = location.hash === '#bot';
 const BOT_DIFF = {
   easy:   { react: 0.42, dodge: 0.22, combo: [1, 3], pause: [0.9, 1.7], heavy: 0.10, air: 0.10, ult: 0.15, recover: 0.2, chase: 0.25, block: 0.15, parry: 0, name: 'EASY' },
   normal: { react: 0.28, dodge: 0.5,  combo: [2, 4], pause: [0.5, 1.1], heavy: 0.2,  air: 0.2,  ult: 0.4,  recover: 0.5, chase: 0.55, block: 0.3, parry: 0.1, name: 'NORMAL' },
+  // stands still and takes hits: used for recording clips and tests
+  dummy:  { react: 9, dodge: 0, combo: [0, 0], pause: [9, 9], heavy: 0, air: 0, ult: 0, recover: 1, chase: 0, block: 0, parry: 0, name: 'DUMMY', dummy: true },
   hard:   { react: 0.16, dodge: 0.8,  combo: [3, 4], pause: [0.2, 0.55], heavy: 0.3, air: 0.3,  ult: 0.8,  recover: 0.85, chase: 0.9, block: 0.35, parry: 0.35, name: 'HARD' },
 };
 const BOT_NAMES = { wind: 'TAVI', fire: 'SOREN', earth: 'BRANNOC', water: 'YSRA' };
@@ -12625,7 +12681,7 @@ const BotAI = {
   input(raw) {
     const a = this.blank();
     const p = G.player, o = Opp, D = this.D;
-    if (!Duel.active || !Duel.started || Duel.ended || !p.alive || !o.puppet) return a;
+    if (!Duel.active || !Duel.started || Duel.ended || !p.alive || !o.puppet || D.dummy) return a;
     const dx = o.pos.x - p.pos.x, dz = o.pos.z - p.pos.z, dist = Math.hypot(dx, dz);
     const ux = dx / (dist || 1), uz = dz / (dist || 1);
     const os = o.puppet.state, t = G.time;
@@ -13245,7 +13301,12 @@ const Cam = {
     this.side = damp(this.side, this.sideT ?? 1, 1.5, dt);
     this.pitch = clamp(this.pitch + a.cy, -0.12, 1.05);
     const sep = lockOK ? dPB : 0;
-    const dist = clamp(4.9 + sep * 0.42, 4.9, 12) + Clarity.zoom * 2.6;
+    // camera rhythm: wide and calm in neutral, tighter in an exchange, a quick punch-in on heavy hits
+    const since = G.time - (this.lastHitT ?? -9);
+    const want = !lockOK ? 0 : since < 0.9 ? -0.55 : (since > 1.6 && sep > 4) ? 0.85 : 0;
+    this.rhythm = damp(this.rhythm || 0, want, want > (this.rhythm || 0) ? 1.2 : 3, dt);
+    this.punch = damp(this.punch || 0, 0, 5, dt);
+    const dist = clamp(4.9 + sep * 0.42, 4.9, 12) + Clarity.zoom * 2.6 + this.rhythm + this.punch;
     const right = new V3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     const lat = (lockOK ? 1.55 : 0.7) * this.side;
     const focus = new V3(p.pos.x, p.pos.y * 0.75 + 1.45, p.pos.z).addScaledVector(right, lat);
@@ -13346,6 +13407,8 @@ const Cam = {
     if (Math.abs(cam.fov - f) > 0.01) { cam.fov = f; cam.updateProjectionMatrix(); }
   },
   dutch(a) { this.roll += a; },
+  // any landed or taken hit: drives the rhythm; heavy ones punch the camera in
+  beat(big, fin) { this.lastHitT = G.time; if (big) this.punch = Math.min(this.punch || 0, fin ? -1.7 : -1.1); },
   snapBehind() {
     const p = G.player, b = G.boss;
     this.yaw = Math.atan2(p.pos.x - b.pos.x, p.pos.z - b.pos.z); this.bias = 0; this.pitch = 0.16; this.shotQ = null;
@@ -13658,5 +13721,5 @@ window.addEventListener('load', () => {
 });
 
 </script>
-<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1116-1609</div></body>
+<div id="buildTag" style="position:fixed;left:10px;bottom:6px;font:11px monospace;opacity:.5;z-index:50;pointer-events:none;color:#fff">build 1116-1641</div></body>
 </html>

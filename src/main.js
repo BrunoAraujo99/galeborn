@@ -22,7 +22,12 @@ const Cam = {
     this.side = damp(this.side, this.sideT ?? 1, 1.5, dt);
     this.pitch = clamp(this.pitch + a.cy, -0.12, 1.05);
     const sep = lockOK ? dPB : 0;
-    const dist = clamp(4.9 + sep * 0.42, 4.9, 12) + Clarity.zoom * 2.6;
+    // camera rhythm: wide and calm in neutral, tighter in an exchange, a quick punch-in on heavy hits
+    const since = G.time - (this.lastHitT ?? -9);
+    const want = !lockOK ? 0 : since < 0.9 ? -0.55 : (since > 1.6 && sep > 4) ? 0.85 : 0;
+    this.rhythm = damp(this.rhythm || 0, want, want > (this.rhythm || 0) ? 1.2 : 3, dt);
+    this.punch = damp(this.punch || 0, 0, 5, dt);
+    const dist = clamp(4.9 + sep * 0.42, 4.9, 12) + Clarity.zoom * 2.6 + this.rhythm + this.punch;
     const right = new V3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     const lat = (lockOK ? 1.55 : 0.7) * this.side;
     const focus = new V3(p.pos.x, p.pos.y * 0.75 + 1.45, p.pos.z).addScaledVector(right, lat);
@@ -123,6 +128,8 @@ const Cam = {
     if (Math.abs(cam.fov - f) > 0.01) { cam.fov = f; cam.updateProjectionMatrix(); }
   },
   dutch(a) { this.roll += a; },
+  // any landed or taken hit: drives the rhythm; heavy ones punch the camera in
+  beat(big, fin) { this.lastHitT = G.time; if (big) this.punch = Math.min(this.punch || 0, fin ? -1.7 : -1.1); },
   snapBehind() {
     const p = G.player, b = G.boss;
     this.yaw = Math.atan2(p.pos.x - b.pos.x, p.pos.z - b.pos.z); this.bias = 0; this.pitch = 0.16; this.shotQ = null;

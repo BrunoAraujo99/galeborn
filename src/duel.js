@@ -35,7 +35,11 @@ class Puppet {
   update(dt) {
     const S = this.snaps, rig = this.rig;
     if (!S.length) { rig.update(dt); return; }
-    const tr = performance.now() - 1000 / SNAP_HZ * 1.6; // render slightly in the past and interpolate
+    // render slightly in the past and interpolate; during our hit-stop the opponent freezes too
+    // (their timeline is held back, then catches up a little faster than real time)
+    const now = performance.now(), rd = now - (this.lastNow || now); this.lastNow = now;
+    if (G.hitstop > 0) this.lag = (this.lag || 0) + rd; else if (this.lag > 0) this.lag = Math.max(0, this.lag - rd * 0.35);
+    const tr = now - 1000 / SNAP_HZ * 1.6 - (this.lag || 0);
     let a = S[S.length - 1], b = a;
     for (let i = S.length - 1; i > 0; i--) if (S[i - 1].rt <= tr) { a = S[i - 1]; b = S[i]; break; }
     const k = b.rt > a.rt ? clamp((tr - a.rt) / (b.rt - a.rt), 0, 1) : 1;
@@ -44,9 +48,11 @@ class Puppet {
     const L = S[S.length - 1];
     this.state = L.s; this.hp = L.hp; this.maxHp = L.mh; this.flow = L.fl; this.vel.set(L.v[0], L.v[1], L.v[2]); this.awake = !!L.aw;
     rig.root.position.copy(this.pos); rig.root.rotation.y = this.yaw;
-    const pose = { hipsY: b.j[33] };
-    JOINTS.forEach((n, i) => { pose[n] = [b.j[i * 3], b.j[i * 3 + 1], b.j[i * 3 + 2]]; });
-    rig.setPose(pose, 30);
+    // joints interpolated between the two snapshots, followed tightly so strikes keep their snap
+    const pose = this.pose || (this.pose = {}), ja = a.j, jb = b.j;
+    pose.hipsY = lerp(ja[33], jb[33], k);
+    JOINTS.forEach((n, i) => { const q = pose[n] || (pose[n] = [0, 0, 0]); for (let c = 0; c < 3; c++) q[c] = lerp(ja[i * 3 + c], jb[i * 3 + c], k); });
+    rig.setPose(pose, 60);
     rig.clipReq = b.c || null;
     if (b.sm) { rig.smear = b.sm[0]; rig.smearLimb = b.sm[1]; }
     if (rig.model) rig.model.setAura(this.awake);

@@ -101,7 +101,7 @@ class Player {
     else if (S === 'slamLand') { this.rig.setPose(HERO_POSES.slamLand, 20); this.vel.x = damp(this.vel.x, 0, 10, dt); this.vel.z = damp(this.vel.z, 0, 10, dt); if (this.st > 0.32 || (this.st > 0.18 && (this.buf === 'dash' || this.buf === 'jump'))) this.toMove(); }
     else if (S === 'hit') { this.rig.setPose(HERO_POSES.hit, 25); this.vel.x = damp(this.vel.x, 0, 6, dt); this.vel.z = damp(this.vel.z, 0, 6, dt); if (this.st > this.stunDur) this.toMove(); }
     else if (S === 'launched') this.updLaunched(dt);
-    else if (S === 'down') { this.rig.setPose(HERO_POSES.down, 12); this.vel.set(0, 0, 0); if (this.st > 0.6 || (this.st > 0.25 && (this.buf === 'dash' || this.buf === 'jump'))) { this.buf = null; this.invuln = 0.6; this.toMove(); Sfx.whoosh(1.2, 0.3); } }
+    else if (S === 'down') { this.rig.setPose(HERO_POSES.down, 12); this.vel.set(0, 0, 0); if (this.st > 0.6 || (this.st > 0.25 && (this.buf === 'dash' || this.buf === 'jump'))) { this.buf = null; this.invuln = 0.6; this.toMove(); Sfx.whoosh(1.2, 0.3); if (Duel.active) this.resetBeat(); } }
     else if (S === 'special') this.updSpecial(dt);
     else if (S === 'pursuit') Pursuit.update(this, dt);
     else if (S === 'beam') { this.rig.setPose(HERO_POSES.release, 20); this.vel.x = 0; this.vel.z = 0; }
@@ -351,7 +351,8 @@ class Player {
     const fwd = this.fwd();
     // pose
     if (t < m.a0) this.rig.setPose(HERO_POSES[m.w], 26);
-    else if (t < m.cancel + 0.05) this.rig.setPose(HERO_POSES[m.s], 38);
+    // strike: snap in fast and overshoot a little, then settle (follow-through)
+    else if (t < m.cancel + 0.05) this.rig.setPose(HERO_POSES[m.s], m.big ? 46 : 52, m.big ? 0.42 : 0.5);
     // soft tracking: strikes curve toward a nearby boss until they land
     if (t < m.a1 && G.boss.alive) { const d = this.bossDir(); if (d.length() < m.reach + G.boss.radius + 3) this.yaw = dampAngle(this.yaw, yawOf(d.x, d.z), 14, dt); }
     // anime smear: stretch the striking limb and leave an afterimage as the blow lands
@@ -434,7 +435,7 @@ class Player {
       const stale = Tempo.mult(m), gm = (this.grade === 'perfect' ? 1.2 : this.grade === 'mash' ? 0.85 : 1) * stale;
       this.meterMult = gm; this.hitLabel = this.grade === 'perfect' ? 'PERFECT' : stale < 0.9 ? 'STALE' : ''; this.hitKind = this.grade === 'perfect' ? 'gold' : stale < 0.9 ? 'stale' : '';
       const res = b.takeDamage(m.dmg * (sky ? 1.8 : 1) * gm, m.post * (sky ? 2 : 1) * gm, hp, hdir, { big: m.big || sky, src: 'melee', counter: m.counter, pull: m.pull, spike: m.spike, knock: sky ? 14 : m.counter ? 11 : m.pull ? m.pull : m.knock != null ? m.knock : m.finisher ? 15 : null });
-      if (res) this.onDealtHit(res, hp, fwd, m.big || sky, sky ? 0.14 : m.counter ? 0.16 : m.big ? 0.1 : 0.06, sky ? 'skyfall' : m.counter ? 'counter' : m.finisher ? 'finisher' : m.launcher ? 'launcher' : '');
+      if (res) this.onDealtHit(res, hp, fwd, m.big || sky, sky ? 0.15 : m.counter ? 0.16 : m.finisher ? 0.14 : m.big ? 0.12 : 0.05, sky ? 'skyfall' : m.counter ? 'counter' : m.finisher ? 'finisher' : m.launcher ? 'launcher' : '');
       if (res) { Tempo.land(m); if (this.grade === 'perfect') Tempo.perfect(this, hp); else if (stale < 0.9) Tempo.stale(hp); }
       this.meterMult = 1; this.hitLabel = ''; this.hitKind = '';
       if (res && sky) Moment.fire('SKYFALL', 'PILLAR VAULT → AIR STRIKE', hp, fwd, 2);
@@ -457,7 +458,7 @@ class Player {
     Kit.onHit(this, res, point, dir, big, tag);
     if (res.interrupt) Moment.fire('INTERRUPT', 'HIS ATTACK SHATTERED', point, dir, 2);
     Clarity.hit(big);
-    hitstop(stop);
+    hitstop(stop); Cam.beat(big, tag === 'finisher' || tag === 'launcher' || tag === 'counter' || tag === 'skyfall');
     FX.shake(big ? 0.55 : Clarity.fx(0.24));
     Sfx.hit(big ? 1.5 : 1);
     FX.hitSpark(point, dir, big, false, Hero.id);
@@ -705,7 +706,8 @@ class Player {
     this.combo = 0; this.counterT = 0;
     for (const k in this.trails) this.trails[k].emit = false;
     Clarity.hit(kind !== 'light');
-    Sfx.playerHurt(); FX.shake(kind === 'light' ? Clarity.fx(0.35) : 0.6); hitstop(kind === 'light' ? 0.06 : 0.1);
+    Sfx.playerHurt(); FX.shake(kind === 'light' ? Clarity.fx(0.35) : 0.6); hitstop(kind === 'light' ? 0.05 : 0.13);
+    this.reactKick(kind); Cam.beat(kind !== 'light' && kind !== 'chip', false);
     Render.post.aberr = kind === 'light' ? Clarity.fx(1.2) : 1.2;
     FX.dmgNumber(this.chest(), dmg, 'hurt'); if (kind !== 'light') { FX.sfxWord(this.chest(), true); Cam.dutch(0.06); }
     this.yaw = yawOf(-dir.x, -dir.z);
@@ -729,7 +731,7 @@ class Player {
     if (kind === 'spike') kind = 'heavy';
     if (kind === 'launch' || kind === 'heavy') {
       Sfx.loopOff('sfx_charge_loop'); setTimeout(() => Sfx.bv('taunt', 0.3, 10), 500);
-      this.state = 'launched'; this.st = 0;
+      this.state = 'launched'; this.st = 0; this.bounced = false;
       this.vel.set(dir.x * 9, kind === 'launch' ? 11 : 7, dir.z * 9); this.grounded = false;
     } else {
       // in a duel a light hit only nudges, so a well-timed string can actually combo
@@ -738,6 +740,27 @@ class Player {
       this.vel.set(dir.x * kb, Math.max(this.vel.y, 0), dir.z * kb);
     }
     return 'hit';
+  }
+  // hit reactions: whip the spine and head along the blow, then let the spring settle them
+  reactKick(kind) {
+    const r = this.rig; this.reactSide = -(this.reactSide || 1);
+    if (kind === 'light' || kind === 'chip') { r.kick('torso', -7, 5 * this.reactSide, 3 * this.reactSide); r.kick('head', -11, 9 * this.reactSide, 0); r.kick('shL', 4, 0, 6); r.kick('shR', 4, 0, -6); }
+    else { r.kick('torso', -16, 4 * this.reactSide, 0); r.kick('head', -18, 0, 0); r.kick('shL', -6, 0, 12); r.kick('shR', -6, 0, -12); }
+  }
+  // reset beat after a knockdown in a duel: the fighter springs back to mid range, which gives the fight a breath
+  resetBeat() {
+    if (!G.boss.alive) return;
+    const d = this.bossDir(); if (d.lengthSq() < 1e-4) return;
+    if (d.length() > 4.2) return; // already at range: no slide needed
+    this.yaw = yawOf(d.x, d.z);
+    // straight back if there is room, else peel off to the side, away from pillars and the edge
+    const away = d.clone().normalize().negate(), q = new V3();
+    for (const ang of [0, 0.7, -0.7, 1.4, -1.4]) {
+      const v = away.clone().applyAxisAngle(new V3(0, 1, 0), ang); q.copy(this.pos).addScaledVector(v, 3.6);
+      if (World.pillarAt(q, 0.7) || Math.hypot(q.x, q.z) > ARENA_R - 1.5) continue;
+      if (ang === 0) this.startDash(new V3(), false); else { this.startDash(v, true); this.yaw = yawOf(d.x, d.z); this.backstep = true; }
+      this.dodgeInv = 0.4; return;
+    }
   }
   knockback(dir, power) {
     if (!this.alive) return;
@@ -753,6 +776,14 @@ class Player {
       FX.ghost(this.rig, 0xffffff); Sfx.whoosh(1.4, 0.5);
       FX.burst(this.chest(), 20, { speed: 8, life: 0.35, s0: 0.3, c0: C.white, c1: C.wind });
       FX.popup(this.chest().add(new V3(0, 0.6, 0)), 'RECOVER', 'tag small', Render.camera);
+      return;
+    }
+    if (this.grounded && this.st > 0.1 && !this.bounced && Duel.active) {
+      // one ground bounce: the body hits the floor and pops back up before it settles
+      this.bounced = true; this.grounded = false; this.vel.y = 4.2; this.vel.x *= 0.45; this.vel.z *= 0.45;
+      FX.shake(0.35); Sfx.land(); Sfx.P('sfx_crater', 0.35);
+      FX.burst(this.pos.clone().setY(0.15), 16, { speed: 6, flat: true, life: 0.5, s0: 0.5, s1: 1.3, c0: C.dust, c1: C.dust, add: false, alpha: 0.45 });
+      this.rig.kick('torso', 10, 0, 0); this.rig.kick('head', 12, 0, 0);
       return;
     }
     if (this.grounded && this.st > 0.1) {

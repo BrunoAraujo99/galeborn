@@ -8,8 +8,8 @@ cp /home/claude/duel/src/*.js /home/claude/duel/src/index.html /home/claude/duel
 cd /home/claude/galeborn && rm -rf public && cp -r /home/claude/duel/dist/web public
 for f in /home/claude/duel/src/*; do n=$(basename $f); [ -f "$f" ] || continue; [ "$n" = three.min.js ] || [ "$n" = gltfloader.js ] || cp $f src/; done
 cp /home/claude/duel/build.py /home/claude/duel/deploy.sh .; mkdir -p assets mock; cp -r /home/claude/duel/assets/art /home/claude/duel/assets/fonts assets/; [ -d /home/claude/duel/assets/arenas ] && cp -r /home/claude/duel/assets/arenas assets/ || true
-cp /home/claude/duel/mock/*.js mock/; cp /home/claude/duel/test3*.js tests/ 2>/dev/null || true
-git add -A && git commit -qm "$1 (build $B)
+cp -r /home/claude/duel/seo . ; cp /home/claude/duel/tools/seo_pages.py tools/ 2>/dev/null || true; cp /home/claude/duel/mock/*.js mock/; cp /home/claude/duel/test3*.js tests/ 2>/dev/null || true
+git add -A && git add -f public/*.png seo/*.png 2>/dev/null; git commit -qm "$1 (build $B)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_012C1B1N6htu5qAdu9iYPaSP" && git -c push.negotiate=true push -q origin main 2>&1 | grep -v moved | grep -v "new location" | grep -v "galeborn.git" || true

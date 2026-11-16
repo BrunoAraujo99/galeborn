@@ -10,6 +10,8 @@ const IS_BOT = location.hash === '#bot';
 const BOT_DIFF = {
   easy:   { react: 0.42, dodge: 0.22, combo: [1, 3], pause: [0.9, 1.7], heavy: 0.10, air: 0.10, ult: 0.15, recover: 0.2, chase: 0.25, block: 0.15, parry: 0, name: 'EASY' },
   normal: { react: 0.28, dodge: 0.5,  combo: [2, 4], pause: [0.5, 1.1], heavy: 0.2,  air: 0.2,  ult: 0.4,  recover: 0.5, chase: 0.55, block: 0.3, parry: 0.1, name: 'NORMAL' },
+  // stands still and takes hits: used for recording clips and tests
+  dummy:  { react: 9, dodge: 0, combo: [0, 0], pause: [9, 9], heavy: 0, air: 0, ult: 0, recover: 1, chase: 0, block: 0, parry: 0, name: 'DUMMY', dummy: true },
   hard:   { react: 0.16, dodge: 0.8,  combo: [3, 4], pause: [0.2, 0.55], heavy: 0.3, air: 0.3,  ult: 0.8,  recover: 0.85, chase: 0.9, block: 0.35, parry: 0.35, name: 'HARD' },
 };
 const BOT_NAMES = { wind: 'TAVI', fire: 'SOREN', earth: 'BRANNOC', water: 'YSRA' };
@@ -99,7 +101,7 @@ const BotAI = {
   input(raw) {
     const a = this.blank();
     const p = G.player, o = Opp, D = this.D;
-    if (!Duel.active || !Duel.started || Duel.ended || !p.alive || !o.puppet) return a;
+    if (!Duel.active || !Duel.started || Duel.ended || !p.alive || !o.puppet || D.dummy) return a;
     const dx = o.pos.x - p.pos.x, dz = o.pos.z - p.pos.z, dist = Math.hypot(dx, dz);
     const ux = dx / (dist || 1), uz = dz / (dist || 1);
     const os = o.puppet.state, t = G.time;

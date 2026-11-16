@@ -8,7 +8,7 @@ const G = {
   stats: null,
 };
 
-function hitstop(s) { if (G.mode === 'duel') s = Math.min(s, 0.06); G.hitstop = Math.max(G.hitstop, s); }
+function hitstop(s) { if (G.mode === 'duel') s = Math.min(s, 0.16); G.hitstop = Math.max(G.hitstop, s); }
 function slowmo(scale, dur) {
   // in a duel the other player keeps real time, so slow-motion is only a short accent
   if (G.mode === 'duel') { scale = Math.max(scale, 0.7); dur *= 0.4; } G.tsTarget = scale; G.timeScale = Math.min(G.timeScale, scale); G.slowT = Math.max(G.slowT, dur); }
